@@ -29,7 +29,7 @@ export default function Memory() {
   }
 
   const handleStartGame = () => {
-    initializeGame([{ id: user.id, name: user.name }]);
+    initializeGame([{ id: user.id, name: user.name, score: 0 }]);
   };
 
   const allMatched = cards.every((card) => card.isMatched);
