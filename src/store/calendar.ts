@@ -14,35 +14,53 @@ interface CalendarEvent {
 
 interface CalendarStore {
   events: CalendarEvent[];
-  addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt'>) => void;
-  removeEvent: (eventId: string) => void;
-  updateEvent: (eventId: string, event: Partial<CalendarEvent>) => void;
+  addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt'>) => Promise<void>;
+  removeEvent: (eventId: string) => Promise<void>;
+  updateEvent: (eventId: string, event: Partial<CalendarEvent>) => Promise<void>;
 }
 
-export const useCalendarStore = create<CalendarStore>((set, get) => ({
+export const useCalendarStore = create<CalendarStore>()((set, get) => ({
   events: [],
 
   addEvent: async (eventData) => {
-    const eventsRef = ref(db, 'calendar/events');
-    const newEventRef = push(eventsRef);
-    const newEvent = {
-      ...eventData,
-      id: newEventRef.key!,
-      createdAt: new Date().toISOString()
-    };
-    
-    await set(newEventRef, newEvent);
+    try {
+      const eventsRef = ref(db, 'calendar/events');
+      const newEventRef = push(eventsRef);
+      const newEvent = {
+        ...eventData,
+        id: newEventRef.key!,
+        createdAt: new Date().toISOString()
+      };
+      
+      await set(newEventRef, newEvent);
+    } catch (error) {
+      console.error('Error adding event:', error);
+    }
   },
 
   removeEvent: async (eventId) => {
-    await remove(ref(db, `calendar/events/${eventId}`));
+    try {
+      await remove(ref(db, `calendar/events/${eventId}`));
+    } catch (error) {
+      console.error('Error removing event:', error);
+    }
   },
 
   updateEvent: async (eventId, eventData) => {
-    await set(ref(db, `calendar/events/${eventId}`), {
-      ...get().events.find(e => e.id === eventId),
-      ...eventData
-    });
+    try {
+      const currentEvents = get().events;
+      const existingEvent = currentEvents.find(e => e.id === eventId);
+      if (!existingEvent) return;
+
+      const updatedEvent = {
+        ...existingEvent,
+        ...eventData
+      };
+
+      await set(ref(db, `calendar/events/${eventId}`), updatedEvent);
+    } catch (error) {
+      console.error('Error updating event:', error);
+    }
   }
 }));
 
@@ -50,8 +68,12 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
 if (typeof window !== 'undefined') {
   const eventsRef = ref(db, 'calendar/events');
   onValue(eventsRef, (snapshot) => {
-    const data = snapshot.val();
-    const events = data ? Object.values(data) : [];
-    useCalendarStore.setState({ events });
+    try {
+      const data = snapshot.val();
+      const events = data ? Object.values(data) : [];
+      useCalendarStore.setState({ events });
+    } catch (error) {
+      console.error('Error syncing calendar events:', error);
+    }
   });
 }
