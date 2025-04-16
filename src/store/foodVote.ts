@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import { ref, set as firebaseSet, remove, onValue, get as firebaseGet } from 'firebase/database';
+import { ref, set as firebaseSet, get as firebaseGet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 export interface Vote {
   id: string;
   userId: string;
   userName: string;
-  option: string;
   timestamp: string;
 }
 
@@ -24,7 +23,6 @@ export interface FoodVote {
   createdBy: string;
   createdByName: string;
   createdAt: string;
-  lastModified?: string;
 }
 
 interface FoodVoteStore {
@@ -33,17 +31,13 @@ interface FoodVoteStore {
   submitVote: (voteId: string, optionId: string, userId: string, userName: string) => Promise<void>;
   deleteVote: (voteId: string) => Promise<void>;
   updateVote: (voteId: string, updates: { title: string; endTime: string; options: FoodVoteOption[] }) => Promise<void>;
-  getVoteParticipants: (voteId: string) => Vote[];
-  subscribeToVote: (voteId: string, callback: (vote: FoodVote) => void) => () => void;
 }
 
 export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
   votes: [],
 
   createVote: async (voteData) => {
-    const votesRef = ref(db, 'foodVotes');
     const newVoteRef = ref(db, `foodVotes/${Date.now()}`);
-    
     const newVote: FoodVote = {
       ...voteData,
       id: newVoteRef.key!,
@@ -69,28 +63,24 @@ export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
     }
 
     const hasVoted = vote.options.some(opt => 
-      opt.votes.some(v => v.userId === userId)
+      opt.votes?.some(v => v.userId === userId)
     );
 
     if (hasVoted) {
       throw new Error('이미 투표하셨습니다.');
     }
 
-    const option = vote.options.find(o => o.id === optionId);
-    if (!option) return;
-
     const newVote: Vote = {
       id: Date.now().toString(),
       userId,
       userName,
-      option: optionId,
       timestamp: new Date().toISOString()
     };
 
-    const updatedOptions = vote.options.map(o =>
-      o.id === optionId
-        ? { ...o, votes: [...(o.votes || []), newVote] }
-        : o
+    const updatedOptions = vote.options.map(opt =>
+      opt.id === optionId
+        ? { ...opt, votes: [...(opt.votes || []), newVote] }
+        : opt
     );
 
     await firebaseSet(voteRef, {
@@ -106,51 +96,26 @@ export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
     
     if (!vote) return;
 
-    const updatedVote = {
+    await firebaseSet(voteRef, {
       ...vote,
-      title: updates.title,
-      endTime: updates.endTime,
+      ...updates,
       options: updates.options.map(option => ({
         ...option,
         votes: vote.options.find(o => o.id === option.id)?.votes || []
       }))
-    };
-
-    await firebaseSet(voteRef, updatedVote);
+    });
   },
 
   deleteVote: async (voteId) => {
     await remove(ref(db, `foodVotes/${voteId}`));
-  },
-
-  getVoteParticipants: (voteId) => {
-    const vote = get().votes.find(v => v.id === voteId);
-    if (!vote) return [];
-
-    const participants = vote.options.flatMap(option => option.votes);
-    return participants.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-  },
-
-  subscribeToVote: (voteId, callback) => {
-    const voteRef = ref(db, `foodVotes/${voteId}`);
-    const unsubscribe = onValue(voteRef, (snapshot) => {
-      const vote = snapshot.val() as FoodVote;
-      if (vote) {
-        callback(vote);
-      }
-    });
-    return unsubscribe;
   }
 }));
 
 if (typeof window !== 'undefined') {
   const votesRef = ref(db, 'foodVotes');
   onValue(votesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    useFoodVoteStore.setState({
-      votes: Object.values(data)
-    });
+    const data = snapshot.val();
+    const votes = data ? Object.values(data) as FoodVote[] : [];
+    useFoodVoteStore.setState({ votes });
   });
 }

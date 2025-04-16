@@ -8,14 +8,21 @@ export default function LoginForm() {
   const [name, setName] = useState('');
   const [role, setRole] = useState<'father' | 'mother' | 'child'>('father');
   const [error, setError] = useState('');
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { login } = useAuthStore();
   const { images } = useGalleryStore();
-  const [imageLoaded, setImageLoaded] = useState(false);
 
-  // 가장 최근 이미지 가져오기
-  const latestImage = images.length > 0 
-    ? images.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0]
+  // 이미지 정렬 로직 수정
+  const latestImage = images && images.length > 0 
+    ? [...images].sort((a, b) => 
+        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      )[0]
     : null;
+
+  // 이미지 로드 상태 초기화
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [latestImage?.url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,17 +36,19 @@ export default function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {latestImage && (
+        {latestImage?.url && (
           <div className="w-full aspect-video relative rounded-lg overflow-hidden shadow-lg">
             {!imageLoaded && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
               </div>
             )}
             <img
               src={latestImage.url}
               alt="최근 가족 사진"
-              className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
               onLoad={() => setImageLoaded(true)}
             />
           </div>
