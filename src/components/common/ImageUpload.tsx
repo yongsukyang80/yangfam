@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { uploadImage } from '@/lib/utils/uploadImage';
-import { resizeImage } from '@/lib/utils/imageProcessing';
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
@@ -11,7 +9,31 @@ interface ImageUploadProps {
 
 export default function ImageUpload({ onUploadComplete, compact = false }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const uploadToImgBB = async (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(
+        `https://api.imgbb.com/1/upload?key=ec16e894458d3d9d649feda3e7edbf12`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('이미지 업로드에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      return data.data.url;
+    } catch (error) {
+      console.error('Error uploading to imgBB:', error);
+      throw new Error('이미지 업로드에 실패했습니다.');
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -24,26 +46,11 @@ export default function ImageUpload({ onUploadComplete, compact = false }: Image
 
     try {
       setIsUploading(true);
-
-      // 파일 크기에 따라 리사이징 적용
-      let processedFile: File | Blob = file;
-      if (file.size > 1024 * 1024) { // 1MB 이상인 경우
-        processedFile = await resizeImage(file);
-      }
-
-      // 미리보기 생성
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(processedFile);
-
-      const url = await uploadImage(processedFile);
+      const url = await uploadToImgBB(file);
       onUploadComplete(url);
-      setPreviewUrl(null);
     } catch (error) {
-      console.error('Error processing image:', error);
-      alert('이미지 처리 중 오류가 발생했습니다.');
+      console.error('Error uploading image:', error);
+      alert('이미지 업로드 중 오류가 발생했습니다.');
     } finally {
       setIsUploading(false);
     }
@@ -111,15 +118,6 @@ export default function ImageUpload({ onUploadComplete, compact = false }: Image
               </>
             )}
           </div>
-          {previewUrl && (
-            <div className="mt-4">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="mx-auto max-h-48 rounded-lg"
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>

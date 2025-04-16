@@ -68,6 +68,7 @@ export default function ChatRoom() {
                   src={msg.content}
                   alt="Shared image"
                   className="max-w-full rounded"
+                  loading="lazy"
                 />
               ) : (
                 <p>{msg.content}</p>
