@@ -12,5 +12,11 @@ const firebaseConfig = {
   databaseURL: "https://yangfam-ecb64-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
+console.log('Initializing Firebase with config:', firebaseConfig);
+
 const app = initializeApp(firebaseConfig);
-export const db = getDatabase(app);
+const db = getDatabase(app);
+
+console.log('Firebase initialized:', !!db);
+
+export { db };

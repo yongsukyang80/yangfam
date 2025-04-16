@@ -21,32 +21,36 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   familyUsers: [],
 
   checkExistingUser: async (name: string) => {
+    console.log('Checking existing user:', name);
     const snapshot = await getDbValue(ref(db, 'users'));
     const users = snapshot.val();
+    console.log('Existing users:', users);
     if (users) {
       const existingUser = Object.values(users as User[]).find(
         (user: User) => user.name === name
       );
+      console.log('Found existing user:', existingUser);
       return existingUser || null;
     }
     return null;
   },
 
   login: async (name: string, role: string) => {
-    // 먼저 같은 이름의 기존 사용자가 있는지 확인
+    console.log('Attempting login:', { name, role });
     const existingUser = await get().checkExistingUser(name);
     
     if (existingUser) {
-      // 기존 사용자가 있으면 해당 사용자로 로그인
+      console.log('Logging in existing user:', existingUser);
       set({ user: existingUser });
       localStorage.setItem('userId', existingUser.id);
     } else {
-      // 새로운 사용자 생성
+      console.log('Creating new user');
       const userId = `user_${Date.now()}`;
       const newUser = { id: userId, name, role };
       await set(ref(db, `users/${userId}`), newUser);
       set({ user: newUser });
       localStorage.setItem('userId', userId);
+      console.log('New user created:', newUser);
     }
   },
 
@@ -58,17 +62,21 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
 // 페이지 로드 시 자동 로그인 처리
 if (typeof window !== 'undefined') {
+  console.log('Setting up Firebase real-time sync');
   // 사용자 목록 실시간 동기화
   const usersRef = ref(db, 'users');
   onValue(usersRef, (snapshot) => {
+    console.log('Received users update:', snapshot.val());
     const data = snapshot.val();
     const users = data ? Object.values(data) : [];
     useAuthStore.setState({ familyUsers: users });
 
     // 저장된 userId가 있으면 자동 로그인
     const savedUserId = localStorage.getItem('userId');
+    console.log('Saved userId:', savedUserId);
     if (savedUserId) {
       const savedUser = users.find((user: User) => user.id === savedUserId);
+      console.log('Found saved user:', savedUser);
       if (savedUser) {
         useAuthStore.setState({ user: savedUser });
       }
