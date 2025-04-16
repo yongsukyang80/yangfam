@@ -1,27 +1,27 @@
 import { create } from 'zustand';
-import { ref, get as getDbValue, set, onValue } from 'firebase/database';
+import { ref, set as firebaseSet, get, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
-interface FamilyMember {
+export interface User {
   id: string;
   name: string;
-  isMaster: boolean;
+  role: 'father' | 'mother' | 'child';
+  points?: number;
 }
 
 interface Family {
   id: string;
   name: string;
-  masterName: string;
-  members: FamilyMember[];
+  createdAt: string;
 }
 
 interface AuthStore {
-  currentUser: FamilyMember | null;
+  currentUser: User | null;
   family: Family | null;
-  familyMembers: FamilyMember[];
-  hasMaster: () => Promise<boolean>;
-  setupMaster: (setup: { masterName: string; familyName: string; members: string[] }) => Promise<void>;
-  login: (memberId: string) => Promise<void>;
+  familyMembers: User[];
+  setCurrentUser: (user: User | null) => void;
+  createFamily: (name: string) => Promise<void>;
+  addFamilyMember: (user: User) => Promise<void>;
   logout: () => void;
 }
 
@@ -30,78 +30,64 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   family: null,
   familyMembers: [],
 
-  hasMaster: async () => {
-    const snapshot = await getDbValue(ref(db, 'family'));
-    return !!snapshot.val();
+  setCurrentUser: (user) => {
+    set({ currentUser: user });
   },
 
-  setupMaster: async ({ masterName, familyName, members }) => {
-    const familyId = 'family_' + Date.now();
-    const masterMember: FamilyMember = {
-      id: 'member_' + Date.now(),
-      name: masterName,
-      isMaster: true
-    };
-
-    const familyMembers: FamilyMember[] = [
-      masterMember,
-      ...members.map(name => ({
-        id: 'member_' + Date.now() + '_' + Math.random(),
-        name,
-        isMaster: false
-      }))
-    ];
-
+  createFamily: async (name) => {
     const family: Family = {
-      id: familyId,
-      name: familyName,
-      masterName,
-      members: familyMembers
+      id: Date.now().toString(),
+      name,
+      createdAt: new Date().toISOString()
     };
 
-    await set(ref(db, 'family'), family);
+    const user = get().currentUser;
+    if (!user) return;
+
+    const familyMembers: User[] = [{
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      points: 0
+    }];
+
+    // Firebase에 데이터 저장
+    await firebaseSet(ref(db, 'family'), family);
+    await firebaseSet(ref(db, 'familyMembers'), familyMembers);
+
+    // Zustand 상태 업데이트
     set({ family, familyMembers });
   },
 
-  login: async (memberId: string) => {
-    const family = get().family;
-    if (!family) throw new Error('가족 정보가 없습니다.');
+  addFamilyMember: async (user) => {
+    const currentMembers = get().familyMembers;
+    const updatedMembers = [...currentMembers, { ...user, points: 0 }];
 
-    const member = family.members.find(m => m.id === memberId);
-    if (!member) throw new Error('가족 구성원을 찾을 수 없습니다.');
+    // Firebase에 데이터 저장
+    await firebaseSet(ref(db, 'familyMembers'), updatedMembers);
 
-    set({ currentUser: member });
-    localStorage.setItem('currentUser', JSON.stringify(member));
+    // Zustand 상태 업데이트
+    set({ familyMembers: updatedMembers });
   },
 
   logout: () => {
-    set({ currentUser: null });
-    localStorage.removeItem('currentUser');
+    set({ currentUser: null, family: null, familyMembers: [] });
   }
 }));
 
-// 실시간 동기화 설정
+// Firebase 실시간 동기화
 if (typeof window !== 'undefined') {
   // 가족 정보 동기화
-  const familyRef = ref(db, 'family');
-  onValue(familyRef, (snapshot) => {
+  onValue(ref(db, 'family'), (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      useAuthStore.setState({
-        family: data,
-        familyMembers: data.members
-      });
+      useAuthStore.setState({ family: data });
     }
   });
 
-  // 자동 로그인
-  const savedUser = localStorage.getItem('currentUser');
-  if (savedUser) {
-    try {
-      const user = JSON.parse(savedUser);
-      useAuthStore.setState({ currentUser: user });
-    } catch (error) {
-      localStorage.removeItem('currentUser');
-    }
-  }
+  // 가족 구성원 동기화
+  onValue(ref(db, 'familyMembers'), (snapshot) => {
+    const data = snapshot.val() || [];
+    useAuthStore.setState({ familyMembers: data });
+  });
 }
