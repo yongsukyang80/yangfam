@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { uploadImage } from '@/lib/utils/uploadImage';
+import { resizeImage } from '@/lib/utils/imageProcessing';
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
@@ -17,33 +18,34 @@ export default function ImageUpload({ onUploadComplete, path, compact = false }:
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 체크 (5MB 제한)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('파일 크기는 5MB를 초과할 수 없습니다.');
-      return;
-    }
-
-    // 이미지 파일 타입 체크
     if (!file.type.startsWith('image/')) {
       alert('이미지 파일만 업로드 가능합니다.');
       return;
     }
 
-    // 미리보기 생성
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
     try {
       setIsUploading(true);
-      const url = await uploadImage(file, path);
+
+      // 파일 크기에 따라 리사이징 적용
+      let uploadFile: File | Blob = file;
+      if (file.size > 1024 * 1024) { // 1MB 이상인 경우
+        const resizedBlob = await resizeImage(file);
+        uploadFile = resizedBlob;
+      }
+
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(uploadFile);
+
+      const url = await uploadImage(uploadFile, path);
       onUploadComplete(url);
       setPreviewUrl(null);
     } catch (error) {
-      alert('이미지 업로드에 실패했습니다.');
-      console.error(error);
+      console.error('Error processing image:', error);
+      alert('이미지 처리 중 오류가 발생했습니다.');
     } finally {
       setIsUploading(false);
     }

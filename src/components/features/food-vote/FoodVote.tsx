@@ -6,10 +6,10 @@ import { useAuthStore } from '@/store/auth';
 
 export default function FoodVote() {
   const currentUser = useAuthStore(state => state.currentUser);
-  const { votes, createVote, submitVote, deleteVote } = useFoodVoteStore();
+  const { votes = [], createVote, submitVote, deleteVote } = useFoodVoteStore();
   
   const [title, setTitle] = useState('');
-  const [options, setOptions] = useState<string[]>(['']);
+  const [options, setOptions] = useState<string[]>(['', '']);
   const [endTime, setEndTime] = useState('');
 
   const handleAddOption = () => {
@@ -60,8 +60,8 @@ export default function FoodVote() {
 
   if (!currentUser) return null;
 
-  const activeVotes = votes.filter(vote => new Date(vote.endTime) > new Date());
-  const completedVotes = votes.filter(vote => new Date(vote.endTime) <= new Date());
+  const activeVotes = votes?.filter(vote => new Date(vote.endTime) > new Date()) || [];
+  const completedVotes = votes?.filter(vote => new Date(vote.endTime) <= new Date()) || [];
 
   return (
     <div className="p-4 pb-20 md:pb-4 space-y-6">
@@ -81,25 +81,31 @@ export default function FoodVote() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">옵션</label>
+            <label className="block text-sm font-medium mb-2">옵션</label>
             {options.map((option, index) => (
               <input
                 key={index}
                 type="text"
                 value={option}
-                onChange={(e) => handleOptionChange(index, e.target.value)}
-                className="w-full px-3 py-2 border rounded mb-2"
+                onChange={(e) => {
+                  const newOptions = [...options];
+                  newOptions[index] = e.target.value;
+                  setOptions(newOptions);
+                }}
+                className="w-full px-4 py-3 border rounded-lg mb-2"
                 placeholder={`옵션 ${index + 1}`}
                 required
               />
             ))}
-            <button
-              type="button"
-              onClick={handleAddOption}
-              className="text-blue-500 hover:text-blue-600"
-            >
-              + 옵션 추가
-            </button>
+            {options.length < 5 && (
+              <button
+                type="button"
+                onClick={() => setOptions([...options, ''])}
+                className="text-blue-500 hover:text-blue-600"
+              >
+                + 옵션 추가
+              </button>
+            )}
           </div>
 
           <div>
@@ -143,11 +149,11 @@ export default function FoodVote() {
                 마감: {new Date(vote.endTime).toLocaleString()}
               </p>
               <div className="space-y-2">
-                {vote.options.map((option) => {
-                  const voteCount = option.votes.length;
-                  const totalVotes = vote.options.reduce((sum, opt) => sum + opt.votes.length, 0);
+                {(vote.options || []).map((option) => {
+                  const voteCount = option.votes?.length || 0;
+                  const totalVotes = vote.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
                   const percentage = totalVotes === 0 ? 0 : (voteCount / totalVotes) * 100;
-                  const hasVoted = option.votes.some(v => v.userId === currentUser.id);
+                  const hasVoted = option.votes?.some(v => v.userId === currentUser?.id) || false;
 
                   return (
                     <div key={option.id} className="space-y-1">
