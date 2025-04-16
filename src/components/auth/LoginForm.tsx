@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth';
+import { useRouter } from 'next/navigation';
 
 export default function LoginForm() {
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
-  const { login, familyUsers } = useAuthStore();
+  const { familyMembers, login } = useAuthStore();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +18,8 @@ export default function LoginForm() {
     setError('');
 
     try {
-      await login(name, role);
+      await login(selectedMemberId);
+      router.push('/calendar'); // 또는 메인 페이지로
     } catch (err) {
       setError('로그인 중 오류가 발생했습니다.');
       console.error(err);
@@ -31,30 +33,20 @@ export default function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            이름
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            역할
+            가족 구성원 선택
           </label>
           <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
+            value={selectedMemberId}
+            onChange={(e) => setSelectedMemberId(e.target.value)}
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             required
           >
             <option value="">선택해주세요</option>
-            <option value="parent">부모님</option>
-            <option value="child">자녀</option>
+            {familyMembers.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name} {member.isMaster ? '(부모님)' : ''}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -71,24 +63,9 @@ export default function LoginForm() {
         <div className="text-red-500 text-sm text-center">{error}</div>
       )}
 
-      {familyUsers.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            현재 접속 중인 가족
-          </h3>
-          <div className="space-y-2">
-            {familyUsers.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between bg-gray-50 p-2 rounded"
-              >
-                <span>{user.name}</span>
-                <span className="text-sm text-gray-500">
-                  {user.role === 'parent' ? '부모님' : '자녀'}
-                </span>
-              </div>
-            ))}
-          </div>
+      {familyMembers.length === 0 && (
+        <div className="text-center text-gray-500">
+          등록된 가족 구성원이 없습니다. 먼저 가족 정보를 설정해주세요.
         </div>
       )}
     </div>
