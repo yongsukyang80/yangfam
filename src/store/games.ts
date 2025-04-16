@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ref, set, get, push, onValue } from 'firebase/database';
+import { ref, set as firebaseSet, get as firebaseGet, push, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 // 게임 공통 타입
@@ -39,7 +39,7 @@ interface GamesStore {
   // 끝말잇기
   wordChain: WordChainGame;
   submitWord: (word: string, userId: string, userName: string) => Promise<boolean>;
-  resetWordChain: () => void;
+  resetWordChain: () => Promise<void>;
   
   // 퀴즈
   quiz: QuizGame;
@@ -86,7 +86,7 @@ export const useGamesStore = create<GamesStore>()((set, get) => ({
       timestamp: new Date().toISOString()
     };
 
-    await set(ref(db, 'games/wordChain'), {
+    await firebaseSet(ref(db, 'games/wordChain'), {
       currentWord: word,
       usedWords: [...wordChain.usedWords, word],
       scores: [...wordChain.scores, newScore]
@@ -96,7 +96,7 @@ export const useGamesStore = create<GamesStore>()((set, get) => ({
   },
 
   resetWordChain: async () => {
-    await set(ref(db, 'games/wordChain'), {
+    await firebaseSet(ref(db, 'games/wordChain'), {
       currentWord: '시작',
       usedWords: [],
       scores: []
@@ -104,16 +104,17 @@ export const useGamesStore = create<GamesStore>()((set, get) => ({
   },
 
   addQuiz: async (quiz) => {
-    const quizRef = push(ref(db, 'games/quiz/questions'));
-    await set(quizRef, {
+    const quizRef = ref(db, 'games/quiz/questions');
+    const newQuizRef = push(quizRef);
+    await firebaseSet(newQuizRef, {
       ...quiz,
-      id: quizRef.key
+      id: newQuizRef.key
     });
   },
 
   submitQuizAnswer: async (quizId, answer, userId, userName) => {
     const quizRef = ref(db, `games/quiz/questions/${quizId}`);
-    const snapshot = await get(quizRef);
+    const snapshot = await firebaseGet(quizRef);
     const quiz = snapshot.val();
 
     if (quiz.answer === answer) {
@@ -125,7 +126,7 @@ export const useGamesStore = create<GamesStore>()((set, get) => ({
       };
 
       const { quiz: quizState } = get();
-      await set(ref(db, 'games/quiz/scores'), [...quizState.scores, newScore]);
+      await firebaseSet(ref(db, 'games/quiz/scores'), [...quizState.scores, newScore]);
       return true;
     }
 
@@ -145,7 +146,7 @@ export const useGamesStore = create<GamesStore>()((set, get) => ({
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
 
-    await set(ref(db, 'games/memory/scores'), updatedScores);
+    await firebaseSet(ref(db, 'games/memory/scores'), updatedScores);
   }
 }));
 

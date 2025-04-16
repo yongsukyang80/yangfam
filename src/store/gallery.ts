@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ref, set, push, remove, onValue } from 'firebase/database';
+import { ref, set as firebaseSet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 interface GalleryImage {
@@ -22,14 +22,15 @@ export const useGalleryStore = create<GalleryStore>()((set) => ({
 
   addImage: async (imageData) => {
     const imagesRef = ref(db, 'gallery/images');
-    const newImageRef = push(imagesRef);
-    const newImage = {
+    const newImageRef = ref(db, `gallery/images/${Date.now()}`);
+    
+    const newImage: GalleryImage = {
       ...imageData,
       id: newImageRef.key!,
       uploadedAt: new Date().toISOString()
     };
-    
-    await set(newImageRef, newImage);
+
+    await firebaseSet(newImageRef, newImage);
   },
 
   removeImage: async (imageId) => {

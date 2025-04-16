@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { ref, set, get, onValue, push, remove } from 'firebase/database';
+import { ref, set as firebaseSet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string;
   title: string;
   description: string;
@@ -25,14 +25,15 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
   addEvent: async (eventData) => {
     try {
       const eventsRef = ref(db, 'calendar/events');
-      const newEventRef = push(eventsRef);
-      const newEvent = {
+      const newEventRef = ref(db, `calendar/events/${Date.now()}`);
+      
+      const newEvent: CalendarEvent = {
         ...eventData,
         id: newEventRef.key!,
         createdAt: new Date().toISOString()
       };
       
-      await set(newEventRef, newEvent);
+      await firebaseSet(newEventRef, newEvent);
     } catch (error) {
       console.error('Error adding event:', error);
     }
@@ -48,16 +49,15 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
 
   updateEvent: async (eventId, eventData) => {
     try {
-      const currentEvents = get().events;
-      const existingEvent = currentEvents.find(e => e.id === eventId);
-      if (!existingEvent) return;
+      const event = get().events.find(e => e.id === eventId);
+      if (!event) return;
 
       const updatedEvent = {
-        ...existingEvent,
+        ...event,
         ...eventData
       };
 
-      await set(ref(db, `calendar/events/${eventId}`), updatedEvent);
+      await firebaseSet(ref(db, `calendar/events/${eventId}`), updatedEvent);
     } catch (error) {
       console.error('Error updating event:', error);
     }
@@ -68,12 +68,9 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
 if (typeof window !== 'undefined') {
   const eventsRef = ref(db, 'calendar/events');
   onValue(eventsRef, (snapshot) => {
-    try {
-      const data = snapshot.val();
-      const events = data ? Object.values(data) : [];
-      useCalendarStore.setState({ events });
-    } catch (error) {
-      console.error('Error syncing calendar events:', error);
-    }
+    const data = snapshot.val() || {};
+    useCalendarStore.setState({
+      events: Object.values(data)
+    });
   });
 }

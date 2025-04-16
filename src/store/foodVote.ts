@@ -1,101 +1,87 @@
 import { create } from 'zustand';
-import { ref, set, push, remove, onValue } from 'firebase/database';
+import { ref, set as firebaseSet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
-
-interface FoodOption {
-  id: string;
-  name: string;
-  description: string;
-  imageUrl?: string;
-  votes: string[]; // 투표한 사용자 ID 배열
-  createdBy: string;
-  createdAt: string;
-}
 
 interface Vote {
   id: string;
-  title: string;
-  description: string;
-  options: FoodOption[];
-  endTime: string;
-  isActive: boolean;
-  createdBy: string;
-  createdAt: string;
+  userId: string;
+  option: string;
+}
+
+interface FoodVoteOption {
+  id: string;
+  text: string;
+  votes: Vote[];
 }
 
 interface FoodVote {
   id: string;
   title: string;
-  options: string[];
-  createdBy: string;
+  options: FoodVoteOption[];
   endTime: string;
-  isActive: boolean;
-}
-
-interface Vote {
-  id: string;
-  voteId: string;
-  userId: string;
-  option: string;
-  timestamp: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 interface FoodVoteStore {
   votes: FoodVote[];
-  userVotes: Vote[];
-  createVote: (vote: Omit<FoodVote, 'id' | 'isActive'>) => Promise<void>;
-  submitVote: (voteId: string, userId: string, option: string) => Promise<void>;
-  closeVote: (voteId: string) => Promise<void>;
+  createVote: (vote: Omit<FoodVote, 'id' | 'createdAt'>) => Promise<void>;
+  submitVote: (voteId: string, optionId: string, userId: string) => Promise<void>;
   deleteVote: (voteId: string) => Promise<void>;
 }
 
 export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
   votes: [],
-  userVotes: [],
 
   createVote: async (voteData) => {
-    const votesRef = ref(db, 'foodVote/votes');
-    const newVoteRef = push(votesRef);
-    const newVote = {
+    const votesRef = ref(db, 'foodVotes');
+    const newVoteRef = ref(db, `foodVotes/${Date.now()}`);
+    
+    const newVote: FoodVote = {
       ...voteData,
       id: newVoteRef.key!,
-      isActive: true
+      createdAt: new Date().toISOString()
     };
-    
-    await set(newVoteRef, newVote);
+
+    await firebaseSet(newVoteRef, newVote);
   },
 
-  submitVote: async (voteId, userId, option) => {
-    const userVotesRef = ref(db, 'foodVote/userVotes');
-    const newVoteRef = push(userVotesRef);
-    const vote = {
-      id: newVoteRef.key!,
-      voteId,
+  submitVote: async (voteId, optionId, userId) => {
+    const vote = get().votes.find(v => v.id === voteId);
+    if (!vote) return;
+
+    const option = vote.options.find(o => o.id === optionId);
+    if (!option) return;
+
+    const newVote: Vote = {
+      id: Date.now().toString(),
       userId,
-      option,
-      timestamp: new Date().toISOString()
+      option: optionId
     };
-    
-    await set(newVoteRef, vote);
-  },
 
-  closeVote: async (voteId) => {
-    await set(ref(db, `foodVote/votes/${voteId}/isActive`), false);
+    const updatedOptions = vote.options.map(o =>
+      o.id === optionId
+        ? { ...o, votes: [...o.votes, newVote] }
+        : o
+    );
+
+    await firebaseSet(ref(db, `foodVotes/${voteId}`), {
+      ...vote,
+      options: updatedOptions
+    });
   },
 
   deleteVote: async (voteId) => {
-    await remove(ref(db, `foodVote/votes/${voteId}`));
+    await remove(ref(db, `foodVotes/${voteId}`));
   }
 }));
 
-// Firebase 실시간 동기화
 if (typeof window !== 'undefined') {
-  const foodVoteRef = ref(db, 'foodVote');
-  onValue(foodVoteRef, (snapshot) => {
+  const votesRef = ref(db, 'foodVotes');
+  onValue(votesRef, (snapshot) => {
     const data = snapshot.val() || {};
     useFoodVoteStore.setState({
-      votes: Object.values(data.votes || {}),
-      userVotes: Object.values(data.userVotes || {})
+      votes: Object.values(data)
     });
   });
 }
