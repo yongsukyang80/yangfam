@@ -23,20 +23,10 @@ export default function ChatRoom() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || (!message.trim() && !imageFile)) return;
+    if (!message.trim() || !currentUser) return;
 
-    if (imageFile) {
-      // 실제로는 이미지를 서버에 업로드하고 URL을 받아야 하지만,
-      // 여기서는 로컬 URL을 생성합니다.
-      const imageUrl = URL.createObjectURL(imageFile);
-      sendMessage(message, currentUser.id, currentUser.name, 'image', imageUrl);
-      setImageFile(null);
-    }
-
-    if (message.trim()) {
-      sendMessage(message, currentUser.id, currentUser.name, 'text');
-    }
-
+    // text, userId, userName만 전달
+    sendMessage(message.trim(), currentUser.id, currentUser.name);
     setMessage('');
   };
 
@@ -52,15 +42,23 @@ export default function ChatRoom() {
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
+        {messages.map((msg, index) => (
           <div
-            key={msg.id}
-            className={`flex ${msg.userId === currentUser?.id ? 'justify-end' : 'justify-start'}`}
+            key={index}
+            className={`flex ${
+              msg.userId === currentUser.id ? 'justify-end' : 'justify-start'
+            }`}
           >
-            <div className={`max-w-[70%] ${msg.userId === currentUser?.id ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-lg p-3`}>
-              {msg.userId !== currentUser?.id && (
-                <div className="text-sm font-medium mb-1">{msg.userName}</div>
-              )}
+            <div
+              className={`max-w-[70%] break-words rounded-lg px-4 py-2 ${
+                msg.userId === currentUser.id
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100'
+              }`}
+            >
+              <div className="text-sm font-medium mb-1">
+                {msg.userId === currentUser.id ? '나' : msg.userName}
+              </div>
               {msg.type === 'image' && msg.imageUrl && (
                 <div className="mb-2">
                   <img
@@ -70,7 +68,7 @@ export default function ChatRoom() {
                   />
                 </div>
               )}
-              {msg.content && <div>{msg.content}</div>}
+              {msg.text && <div>{msg.text}</div>}
               <div className="text-xs mt-1 opacity-70">
                 {new Date(msg.timestamp).toLocaleTimeString()}
               </div>
