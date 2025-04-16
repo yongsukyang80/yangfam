@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMissionStore, type Mission } from '@/store/mission';
 import { useAuthStore } from '@/store/auth';
+import ImageUpload from '@/components/common/ImageUpload';
 
 export default function MissionComponent() {
   const currentUser = useAuthStore((state) => state.currentUser);
@@ -20,7 +21,6 @@ export default function MissionComponent() {
   const [description, setDescription] = useState('');
   const [points, setPoints] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [proofImage, setProofImage] = useState('');
 
   const handleCreateMission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,10 +40,9 @@ export default function MissionComponent() {
     setDeadline('');
   };
 
-  const handleSubmitProof = async (missionId: string) => {
-    if (!currentUser || !proofImage) return;
-    await submitMissionProof(missionId, currentUser.id, proofImage);
-    setProofImage('');
+  const handleSubmitProof = async (missionId: string, imageUrl: string) => {
+    if (!currentUser) return;
+    await submitMissionProof(missionId, currentUser.id, imageUrl);
   };
 
   if (!currentUser) return null;
@@ -141,19 +140,10 @@ export default function MissionComponent() {
               )}
               {mission.assignedTo === currentUser.id && (
                 <div className="mt-2 space-y-2">
-                  <input
-                    type="text"
-                    value={proofImage}
-                    onChange={(e) => setProofImage(e.target.value)}
-                    placeholder="인증 이미지 URL"
-                    className="w-full px-3 py-2 border rounded"
+                  <ImageUpload
+                    onUploadComplete={(url) => handleSubmitProof(mission.id, url)}
+                    path="missions"
                   />
-                  <button
-                    onClick={() => handleSubmitProof(mission.id)}
-                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    인증하기
-                  </button>
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   // Firebase Console에서 복사한 설정 정보를 여기에 붙여넣기
@@ -16,5 +17,6 @@ console.log('Initializing Firebase with config:', firebaseConfig);
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
+export const storage = getStorage(app);
 
 console.log('Firebase initialized:', !!db);

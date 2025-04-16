@@ -31,7 +31,9 @@ export default function Navigation() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center p-2 ${
-                pathname === item.href ? 'text-blue-600' : 'text-gray-600'
+                pathname === item.href 
+                ? 'text-blue-600 font-medium' 
+                : 'text-[#1a1a1a]'
               }`}
             >
               <span className="text-xl">{item.icon}</span>

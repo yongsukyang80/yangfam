@@ -7,6 +7,9 @@
   --foreground: #171717;
   --font-size-base: 16px;
   --touch-target-size: 44px;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-tertiary: #717171;
 }
 
 @theme inline {
@@ -29,6 +32,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  @apply text-[#1a1a1a];
 }
 
 /* 모바일 최적화 기본 스타일 */
@@ -58,15 +62,65 @@ body {
   input[type="url"],
   select,
   textarea {
-    @apply text-base px-4 py-3 rounded-lg;
+    @apply text-base px-4 py-3 rounded-lg text-[#1a1a1a] placeholder-gray-400;
     min-height: var(--touch-target-size);
+  }
+
+  /* 기본 텍스트 스타일 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-[#1a1a1a] font-bold;
+  }
+
+  p, span, div {
+    @apply text-[#1a1a1a];
+  }
+
+  /* 입력 필드 스타일 */
+  input, textarea, select {
+    @apply text-[#1a1a1a] placeholder-gray-400;
+  }
+
+  /* 레이블 스타일 */
+  label {
+    @apply text-[#1a1a1a] font-medium;
   }
 }
 
 /* 모바일에서 더 나은 가독성을 위한 텍스트 크기 조정 */
 @media (max-width: 640px) {
-  h1 { @apply text-2xl; }
-  h2 { @apply text-xl; }
-  h3 { @apply text-lg; }
-  p { @apply text-base; }
+  body {
+    @apply text-[#1a1a1a] leading-relaxed;
+  }
+
+  .text-content-secondary {
+    @apply text-[#4a4a4a];
+  }
+
+  input, textarea, select {
+    @apply text-base;
+  }
+
+  /* 작은 텍스트의 가독성 향상 */
+  .text-sm {
+    @apply text-[#4a4a4a] leading-relaxed;
+  }
+}
+
+/* 모바일에서의 텍스트 가독성 향상 */
+@layer components {
+  .text-content-primary {
+    @apply text-[#1a1a1a];
+  }
+
+  .text-content-secondary {
+    @apply text-[#4a4a4a];
+  }
+
+  .text-content-tertiary {
+    @apply text-[#717171];
+  }
+
+  .mobile-text-enhanced {
+    @apply text-[#1a1a1a] leading-relaxed;
+  }
 }
