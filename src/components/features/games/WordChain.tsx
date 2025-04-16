@@ -1,152 +1,95 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useWordChainStore } from '@/store/wordChain';
+import { useState } from 'react';
+import { useGamesStore } from '@/store/games';
 import { useAuthStore } from '@/store/auth';
 
 export default function WordChain() {
-  const [word, setWord] = useState('');
-  const [error, setError] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [input, setInput] = useState('');
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const { wordChain, submitWord, resetWordChain } = useGamesStore();
 
-  const currentUser = useAuthStore(state => state.currentUser);
-  const {
-    players,
-    words,
-    currentTurn,
-    isGameStarted,
-    addPlayer,
-    removePlayer,
-    addWord,
-    startGame,
-    endGame,
-    resetGame
-  } = useWordChainStore();
-
-  useEffect(() => {
-    if (currentUser && !players.find(p => p.id === currentUser.id)) {
-      addPlayer({ id: currentUser.id, name: currentUser.name });
-    }
-  }, [currentUser, players, addPlayer]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || currentTurn !== currentUser.id) return;
+    if (!currentUser) return;
 
-    const trimmedWord = word.trim();
-    if (!trimmedWord) {
-      setError('단어를 입력해주세요');
-      return;
-    }
+    const success = await submitWord(
+      input.trim(),
+      currentUser.id,
+      currentUser.name
+    );
 
-    if (addWord(trimmedWord, currentUser.id)) {
-      setWord('');
-      setError('');
+    if (success) {
+      setInput('');
     } else {
-      setError('올바른 단어를 입력해주세요');
+      alert('잘못된 단어입니다. 다시 시도해주세요.');
     }
   };
 
-  if (!currentUser) {
-    return <div>게임에 참여하려면 로그인이 필요합니다.</div>;
-  }
+  if (!currentUser) return null;
 
   return (
-    <div className="space-y-6">
-      {/* 게임 상태 */}
-      <div className="flex items-center justify-between">
-        <div className="text-lg font-bold">
-          {isGameStarted ? '게임 진행 중' : '대기 중'}
+    <div className="p-4 space-y-6">
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-2xl font-bold mb-4">끝말잇기</h2>
+        <div className="mb-4">
+          <p className="text-lg">현재 단어: <span className="font-bold">{wordChain.currentWord}</span></p>
         </div>
-        <div className="space-x-2">
-          {!isGameStarted && players.length >= 2 && (
-            <button
-              onClick={startGame}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              게임 시작
-            </button>
-          )}
-          {isGameStarted && (
-            <button
-              onClick={endGame}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              게임 종료
-            </button>
-          )}
-        </div>
-      </div>
 
-      {/* 플레이어 목록 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className={`p-4 rounded-lg ${
-              currentTurn === player.id
-                ? 'bg-yellow-100 border-2 border-yellow-400'
-                : 'bg-gray-100'
-            }`}
-          >
-            <div className="font-medium">{player.name}</div>
-            <div className="text-sm text-gray-600">점수: {player.score}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* 단어 히스토리 */}
-      <div className="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
-        <div className="space-y-2">
-          {words.map((wordItem, index) => {
-            const player = players.find(p => p.id === wordItem.playerId);
-            return (
-              <div key={index} className="flex items-center space-x-2">
-                <span className="text-gray-500">{player?.name}:</span>
-                <span className="font-medium">{wordItem.word}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 입력 폼 */}
-      {isGameStarted && (
-        <form onSubmit={handleSubmit} className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="w-full px-3 py-2 border rounded"
+            placeholder="다음 단어를 입력하세요"
+            required
+          />
           <div className="flex space-x-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={word}
-              onChange={(e) => setWord(e.target.value)}
-              placeholder={
-                currentTurn === currentUser.id
-                  ? '단어를 입력하세요...'
-                  : '다른 플레이어의 차례입니다'
-              }
-              disabled={currentTurn !== currentUser.id}
-              className="flex-1 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
             <button
               type="submit"
-              disabled={currentTurn !== currentUser.id}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              입력
+              제출
+            </button>
+            <button
+              type="button"
+              onClick={resetWordChain}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              게임 리셋
             </button>
           </div>
-          {error && <div className="text-red-500 text-sm">{error}</div>}
         </form>
-      )}
+      </div>
 
-      {/* 게임 규칙 */}
-      <div className="bg-blue-50 p-4 rounded-lg">
-        <h3 className="font-bold mb-2">게임 규칙</h3>
-        <ul className="list-disc list-inside text-sm space-y-1">
-          <li>이전 단어의 마지막 글자로 시작하는 단어를 입력하세요</li>
-          <li>단어의 길이만큼 점수를 획득합니다</li>
-          <li>게임을 시작하려면 2명 이상의 플레이어가 필요합니다</li>
-        </ul>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-xl font-bold mb-4">사용된 단어들</h3>
+        <div className="flex flex-wrap gap-2">
+          {wordChain.usedWords.map((word, index) => (
+            <span
+              key={index}
+              className="px-3 py-1 bg-gray-100 rounded"
+            >
+              {word}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-xl font-bold mb-4">점수</h3>
+        <div className="space-y-2">
+          {wordChain.scores.map((score, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center"
+            >
+              <span>{score.userName}</span>
+              <span>{score.score}점</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

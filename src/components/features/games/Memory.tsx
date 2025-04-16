@@ -1,113 +1,134 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useMemoryStore } from '@/store/memory';
+import { useState, useEffect } from 'react';
+import { useGamesStore } from '@/store/games';
 import { useAuthStore } from '@/store/auth';
 
-export default function Memory() {
-  const {
-    cards,
-    players,
-    currentPlayer,
-    isPlaying,
-    moves,
-    initializeGame,
-    flipCard,
-    resetGame,
-  } = useMemoryStore();
+const CARDS = [
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼',
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼'
+];
 
+export default function Memory() {
   const currentUser = useAuthStore((state) => state.currentUser);
+  const { memory, submitMemoryScore } = useGamesStore();
+  
+  const [cards, setCards] = useState<string[]>([]);
+  const [flipped, setFlipped] = useState<boolean[]>([]);
+  const [matched, setMatched] = useState<boolean[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [firstChoice, setFirstChoice] = useState<number | null>(null);
+  const [secondChoice, setSecondChoice] = useState<number | null>(null);
 
   useEffect(() => {
-    return () => {
-      resetGame();
-    };
-  }, [resetGame]);
+    initializeGame();
+  }, []);
 
-  if (!currentUser) {
-    return <div>게임에 참여하려면 로그인이 필요합니다.</div>;
-  }
-
-  const handleStartGame = () => {
-    initializeGame([{ id: currentUser.id, name: currentUser.name, score: 0 }]);
+  const initializeGame = () => {
+    const shuffled = [...CARDS].sort(() => Math.random() - 0.5);
+    setCards(shuffled);
+    setFlipped(new Array(16).fill(false));
+    setMatched(new Array(16).fill(false));
+    setMoves(0);
+    setFirstChoice(null);
+    setSecondChoice(null);
   };
 
-  const allMatched = cards.every((card) => card.isMatched);
+  const handleCardClick = async (index: number) => {
+    if (!currentUser) return;
+    if (flipped[index] || matched[index]) return;
+    if (firstChoice === null) {
+      setFirstChoice(index);
+      setFlipped(prev => {
+        const next = [...prev];
+        next[index] = true;
+        return next;
+      });
+    } else if (secondChoice === null && index !== firstChoice) {
+      setSecondChoice(index);
+      setFlipped(prev => {
+        const next = [...prev];
+        next[index] = true;
+        return next;
+      });
+      setMoves(prev => prev + 1);
+
+      if (cards[firstChoice] === cards[index]) {
+        setMatched(prev => {
+          const next = [...prev];
+          next[firstChoice] = true;
+          next[index] = true;
+          return next;
+        });
+        setFirstChoice(null);
+        setSecondChoice(null);
+
+        // 게임 완료 체크
+        if (matched.filter(Boolean).length === 14) {
+          await submitMemoryScore(moves, currentUser.id, currentUser.name);
+        }
+      } else {
+        setTimeout(() => {
+          setFlipped(prev => {
+            const next = [...prev];
+            next[firstChoice] = false;
+            next[index] = false;
+            return next;
+          });
+          setFirstChoice(null);
+          setSecondChoice(null);
+        }, 1000);
+      }
+    }
+  };
+
+  if (!currentUser) return null;
 
   return (
-    <div className="space-y-6">
-      {!isPlaying ? (
-        <div className="text-center">
-          <button
-            onClick={handleStartGame}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            게임 시작하기
-          </button>
+    <div className="p-4 space-y-6">
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">메모리 게임</h2>
+          <div className="space-x-4">
+            <span>이동 횟수: {moves}</span>
+            <button
+              onClick={initializeGame}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              새 게임
+            </button>
+          </div>
         </div>
-      ) : (
-        <>
-          {/* 게임 정보 */}
-          <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <div className="text-sm text-gray-600">현재 플레이어</div>
-              <div className="font-bold">
-                {players.find((p) => p.id === currentPlayer)?.name}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-sm text-gray-600">시도 횟수</div>
-              <div className="font-bold text-center">{moves}</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-sm text-gray-600">점수</div>
-              <div className="font-bold">
-                {players.find((p) => p.id === currentUser.id)?.score}
-              </div>
-            </div>
-          </div>
 
-          {/* 카드 그리드 */}
-          <div className="grid grid-cols-4 gap-4">
-            {cards.map((card) => (
-              <button
-                key={card.id}
-                onClick={() => flipCard(card.id)}
-                className={`aspect-square text-4xl flex items-center justify-center rounded-lg transition-all duration-300 transform ${
-                  card.isFlipped || card.isMatched
-                    ? 'bg-white rotate-0'
-                    : 'bg-blue-500 rotate-180'
-                }`}
-                disabled={card.isMatched}
-              >
-                <span
-                  className={`transition-all duration-300 transform ${
-                    card.isFlipped || card.isMatched ? 'rotate-0' : 'rotate-180'
-                  }`}
-                >
-                  {card.isFlipped || card.isMatched ? card.emoji : ''}
-                </span>
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-4 gap-2">
+          {cards.map((card, index) => (
+            <button
+              key={index}
+              onClick={() => handleCardClick(index)}
+              className={`h-24 text-4xl flex items-center justify-center rounded
+                ${flipped[index] || matched[index] ? 'bg-white' : 'bg-gray-200'}`}
+              disabled={flipped[index] || matched[index]}
+            >
+              {(flipped[index] || matched[index]) ? card : '?'}
+            </button>
+          ))}
+        </div>
+      </div>
 
-          {/* 게임 종료 */}
-          {allMatched && (
-            <div className="text-center space-y-4">
-              <div className="text-2xl font-bold">게임 종료!</div>
-              <div className="text-gray-600">
-                총 {moves}번 시도해서 완성했습니다!
-              </div>
-              <button
-                onClick={handleStartGame}
-                className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-              >
-                다시 시작하기
-              </button>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-xl font-bold mb-4">최고 기록</h3>
+        <div className="space-y-2">
+          {memory.bestScores.map((score, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center"
+            >
+              <span>{score.userName}</span>
+              <span>{score.score} 이동</span>
             </div>
-          )}
-        </>
-      )}
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

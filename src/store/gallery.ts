@@ -13,11 +13,11 @@ interface GalleryImage {
 
 interface GalleryStore {
   images: GalleryImage[];
-  addImage: (image: Omit<GalleryImage, 'id' | 'uploadedAt'>) => void;
-  removeImage: (imageId: string) => void;
+  addImage: (image: Omit<GalleryImage, 'id' | 'uploadedAt'>) => Promise<void>;
+  removeImage: (imageId: string) => Promise<void>;
 }
 
-export const useGalleryStore = create<GalleryStore>((set) => ({
+export const useGalleryStore = create<GalleryStore>()((set) => ({
   images: [],
 
   addImage: async (imageData) => {
@@ -41,8 +41,9 @@ export const useGalleryStore = create<GalleryStore>((set) => ({
 if (typeof window !== 'undefined') {
   const imagesRef = ref(db, 'gallery/images');
   onValue(imagesRef, (snapshot) => {
-    const data = snapshot.val();
-    const images = data ? Object.values(data) : [];
-    useGalleryStore.setState({ images });
+    const data = snapshot.val() || {};
+    useGalleryStore.setState({
+      images: Object.values(data)
+    });
   });
 }

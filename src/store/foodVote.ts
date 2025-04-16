@@ -33,6 +33,7 @@ interface FoodVote {
 }
 
 interface Vote {
+  id: string;
   voteId: string;
   userId: string;
   option: string;
@@ -42,13 +43,13 @@ interface Vote {
 interface FoodVoteStore {
   votes: FoodVote[];
   userVotes: Vote[];
-  createVote: (vote: Omit<FoodVote, 'id' | 'isActive'>) => void;
-  submitVote: (voteId: string, userId: string, option: string) => void;
-  closeVote: (voteId: string) => void;
-  deleteVote: (voteId: string) => void;
+  createVote: (vote: Omit<FoodVote, 'id' | 'isActive'>) => Promise<void>;
+  submitVote: (voteId: string, userId: string, option: string) => Promise<void>;
+  closeVote: (voteId: string) => Promise<void>;
+  deleteVote: (voteId: string) => Promise<void>;
 }
 
-export const useFoodVoteStore = create<FoodVoteStore>((set, get) => ({
+export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
   votes: [],
   userVotes: [],
 
@@ -68,6 +69,7 @@ export const useFoodVoteStore = create<FoodVoteStore>((set, get) => ({
     const userVotesRef = ref(db, 'foodVote/userVotes');
     const newVoteRef = push(userVotesRef);
     const vote = {
+      id: newVoteRef.key!,
       voteId,
       userId,
       option,
@@ -90,12 +92,10 @@ export const useFoodVoteStore = create<FoodVoteStore>((set, get) => ({
 if (typeof window !== 'undefined') {
   const foodVoteRef = ref(db, 'foodVote');
   onValue(foodVoteRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      useFoodVoteStore.setState({
-        votes: Object.values(data.votes || {}),
-        userVotes: Object.values(data.userVotes || {})
-      });
-    }
+    const data = snapshot.val() || {};
+    useFoodVoteStore.setState({
+      votes: Object.values(data.votes || {}),
+      userVotes: Object.values(data.userVotes || {})
+    });
   });
 }
