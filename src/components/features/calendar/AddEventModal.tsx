@@ -1,119 +1,100 @@
 'use client';
 
 import { useState } from 'react';
-import { useCalendarStore } from '@/store/calendar';
 import { useAuthStore } from '@/store/auth';
+import { useCalendarStore } from '@/store/calendar';
 
 interface AddEventModalProps {
-  isOpen: boolean;
   onClose: () => void;
-  selectedDate: Date;
+  selectedDate?: string;
 }
 
-export default function AddEventModal({ isOpen, onClose, selectedDate }: AddEventModalProps) {
+export default function AddEventModal({ onClose, selectedDate }: AddEventModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<'생일' | '약속' | '기념일'>('약속');
+  const [type, setType] = useState<'family' | 'personal'>('family');
+  const [date, setDate] = useState(selectedDate || new Date().toISOString().split('T')[0]);
 
-  const addEvent = useCalendarStore(state => state.addEvent);
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const addEvent = useCalendarStore((state) => state.addEvent);
 
-  if (!isOpen || !user) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    addEvent({
+    if (!currentUser) return;
+
+    await addEvent({
       title,
       description,
+      date,
       type,
-      date: selectedDate.toISOString().split('T')[0],
-      createdBy: user.id
+      createdBy: currentUser.id
     });
 
-    setTitle('');
-    setDescription('');
-    setType('약속');
     onClose();
   };
+
+  if (!currentUser) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">일정 추가</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-
+        <h2 className="text-xl font-bold mb-4">일정 추가</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              날짜
-            </label>
-            <div className="text-gray-600">
-              {selectedDate.toLocaleDateString()}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-              제목
-            </label>
+            <label className="block text-sm font-medium text-gray-700">제목</label>
             <input
               type="text"
-              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-              종류
-            </label>
-            <select
-              id="type"
-              value={type}
-              onChange={(e) => setType(e.target.value as '생일' | '약속' | '기념일')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="생일">생일</option>
-              <option value="약속">약속</option>
-              <option value="기념일">기념일</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700">설명</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+              rows={3}
+            />
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              설명
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            <label className="block text-sm font-medium text-gray-700">날짜</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+              required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">일정 유형</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as 'family' | 'personal')}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+            >
+              <option value="family">가족 일정</option>
+              <option value="personal">개인 일정</option>
+            </select>
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
             >
               취소
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               추가
             </button>

@@ -11,14 +11,14 @@ export default function Gallery() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { items, addItem, removeItem, toggleLike } = useGalleryStore();
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
 
   console.log('Current gallery items:', items);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = e.target.files?.[0];
-      if (!file || !user) {
+      if (!file || !currentUser) {
         setUploadStatus('파일이나 사용자 정보가 없습니다.');
         return;
       }
@@ -39,7 +39,7 @@ export default function Gallery() {
         url: dataUrl,  // data URL 사용
         title,
         description,
-        uploadedBy: user.id,
+        uploadedBy: currentUser.id,
       });
 
       setTitle('');
@@ -154,9 +154,9 @@ export default function Gallery() {
                 )}
                 <div className="flex items-center justify-between mt-4">
                   <button
-                    onClick={() => user && toggleLike(item.id, user.id)}
+                    onClick={() => currentUser && toggleLike(item.id, currentUser.id)}
                     className={`flex items-center space-x-2 ${
-                      user && item.likes.includes(user.id)
+                      currentUser && item.likes.includes(currentUser.id)
                         ? 'text-red-500'
                         : 'text-gray-500'
                     }`}
@@ -164,7 +164,7 @@ export default function Gallery() {
                     <span>❤️</span>
                     <span className="text-sm">{item.likes.length}</span>
                   </button>
-                  {user && item.uploadedBy === user.id && (
+                  {currentUser && item.uploadedBy === currentUser.id && (
                     <button
                       onClick={() => removeItem(item.id)}
                       className="text-red-500 hover:text-red-700 text-sm"

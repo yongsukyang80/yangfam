@@ -38,9 +38,9 @@ const GAMES: Game[] = [
 
 export default function GameZone() {
   const [selectedGame, setSelectedGame] = useState<GameType | null>(null);
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore(state => state.currentUser);
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <p className="text-gray-500">게임을 시작하려면 로그인이 필요합니다.</p>

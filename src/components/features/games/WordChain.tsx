@@ -9,7 +9,7 @@ export default function WordChain() {
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore(state => state.currentUser);
   const {
     players,
     words,
@@ -24,14 +24,14 @@ export default function WordChain() {
   } = useWordChainStore();
 
   useEffect(() => {
-    if (user && !players.find(p => p.id === user.id)) {
-      addPlayer({ id: user.id, name: user.name });
+    if (currentUser && !players.find(p => p.id === currentUser.id)) {
+      addPlayer({ id: currentUser.id, name: currentUser.name });
     }
-  }, [user, players, addPlayer]);
+  }, [currentUser, players, addPlayer]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || currentTurn !== user.id) return;
+    if (!currentUser || currentTurn !== currentUser.id) return;
 
     const trimmedWord = word.trim();
     if (!trimmedWord) {
@@ -39,7 +39,7 @@ export default function WordChain() {
       return;
     }
 
-    if (addWord(trimmedWord, user.id)) {
+    if (addWord(trimmedWord, currentUser.id)) {
       setWord('');
       setError('');
     } else {
@@ -47,7 +47,7 @@ export default function WordChain() {
     }
   };
 
-  if (!user) {
+  if (!currentUser) {
     return <div>게임에 참여하려면 로그인이 필요합니다.</div>;
   }
 
@@ -120,16 +120,16 @@ export default function WordChain() {
               value={word}
               onChange={(e) => setWord(e.target.value)}
               placeholder={
-                currentTurn === user.id
+                currentTurn === currentUser.id
                   ? '단어를 입력하세요...'
                   : '다른 플레이어의 차례입니다'
               }
-              disabled={currentTurn !== user.id}
+              disabled={currentTurn !== currentUser.id}
               className="flex-1 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               type="submit"
-              disabled={currentTurn !== user.id}
+              disabled={currentTurn !== currentUser.id}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
             >
               입력

@@ -10,7 +10,7 @@ export default function ChatRoom() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
   const { messages, addMessage } = useChatStore();
 
   const scrollToBottom = () => {
@@ -23,7 +23,7 @@ export default function ChatRoom() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || (!message.trim() && !imageFile)) return;
+    if (!currentUser || (!message.trim() && !imageFile)) return;
 
     if (imageFile) {
       // 실제로는 이미지를 서버에 업로드하고 URL을 받아야 하지만,
@@ -31,8 +31,8 @@ export default function ChatRoom() {
       const imageUrl = URL.createObjectURL(imageFile);
       addMessage({
         content: message,
-        userId: user.id,
-        userName: user.name,
+        userId: currentUser.id,
+        userName: currentUser.name,
         type: 'image',
         imageUrl,
       });
@@ -42,8 +42,8 @@ export default function ChatRoom() {
     if (message.trim()) {
       addMessage({
         content: message.trim(),
-        userId: user.id,
-        userName: user.name,
+        userId: currentUser.id,
+        userName: currentUser.name,
         type: 'text',
       });
     }
@@ -64,10 +64,10 @@ export default function ChatRoom() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.userId === user?.id ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.userId === currentUser?.id ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`max-w-[70%] ${msg.userId === user?.id ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-lg p-3`}>
-              {msg.userId !== user?.id && (
+            <div className={`max-w-[70%] ${msg.userId === currentUser?.id ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-lg p-3`}>
+              {msg.userId !== currentUser?.id && (
                 <div className="text-sm font-medium mb-1">{msg.userName}</div>
               )}
               {msg.type === 'image' && msg.imageUrl && (

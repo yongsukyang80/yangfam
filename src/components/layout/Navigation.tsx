@@ -15,10 +15,10 @@ const navigationItems = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const user = useAuthStore(state => state.user);
+  const currentUser = useAuthStore(state => state.currentUser);
   const logout = useAuthStore(state => state.logout);
 
-  if (!user) return null;
+  if (!currentUser) return null;
 
   return (
     <nav className="bg-white shadow-lg">
@@ -52,9 +52,9 @@ export default function Navigation() {
 
           <div className="flex items-center">
             <div className="flex items-center mr-4">
-              <span className="text-sm text-gray-500 mr-2">{user.name}</span>
+              <span className="text-sm text-gray-500 mr-2">{currentUser.name}</span>
               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                {user.name[0]}
+                {currentUser.name[0]}
               </div>
             </div>
             <button

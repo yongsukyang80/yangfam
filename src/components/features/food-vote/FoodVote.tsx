@@ -11,11 +11,11 @@ export default function FoodVote() {
   const [endTime, setEndTime] = useState('');
   const [newOption, setNewOption] = useState({ name: '', description: '' });
 
-  const user = useAuthStore((state) => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
   const { votes, createVote, addOption, removeOption, toggleVote, endVote, deleteVote } =
     useFoodVoteStore();
 
-  if (!user) {
+  if (!currentUser) {
     return <div>투표에 참여하려면 로그인이 필요합니다.</div>;
   }
 
@@ -25,7 +25,7 @@ export default function FoodVote() {
       title,
       description,
       endTime,
-      createdBy: user.id,
+      createdBy: currentUser.id,
       options: [],
     });
     setTitle('');
@@ -39,7 +39,7 @@ export default function FoodVote() {
     addOption(voteId, {
       name: newOption.name,
       description: newOption.description,
-      createdBy: user.id,
+      createdBy: currentUser.id,
     });
     setNewOption({ name: '', description: '' });
   };
@@ -113,7 +113,7 @@ export default function FoodVote() {
                   마감: {new Date(vote.endTime).toLocaleString()}
                 </p>
               </div>
-              {vote.createdBy === user.id && (
+              {vote.createdBy === currentUser.id && (
                 <button
                   onClick={() => deleteVote(vote.id)}
                   className="text-red-500 hover:text-red-700"
@@ -140,14 +140,14 @@ export default function FoodVote() {
                     </div>
                     {vote.isActive && !isVoteExpired(vote.endTime) && (
                       <button
-                        onClick={() => toggleVote(vote.id, option.id, user.id)}
+                        onClick={() => toggleVote(vote.id, option.id, currentUser.id)}
                         className={`px-4 py-2 rounded ${
-                          option.votes.includes(user.id)
+                          option.votes.includes(currentUser.id)
                             ? 'bg-blue-500 text-white'
                             : 'bg-gray-200 hover:bg-gray-300'
                         }`}
                       >
-                        {option.votes.includes(user.id) ? '투표 취소' : '투표하기'}
+                        {option.votes.includes(currentUser.id) ? '투표 취소' : '투표하기'}
                       </button>
                     )}
                   </div>
@@ -190,7 +190,7 @@ export default function FoodVote() {
             )}
 
             {/* 투표 종료 버튼 */}
-            {vote.isActive && vote.createdBy === user.id && (
+            {vote.isActive && vote.createdBy === currentUser.id && (
               <button
                 onClick={() => endVote(vote.id)}
                 className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"

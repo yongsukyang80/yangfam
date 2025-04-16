@@ -13,7 +13,7 @@ export default function Mission() {
   const [dueDate, setDueDate] = useState('');
   const [proof, setProof] = useState('');
 
-  const user = useAuthStore((state) => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
   const {
     missions,
     userPoints,
@@ -24,7 +24,7 @@ export default function Mission() {
     getUserPoints,
   } = useMissionStore();
 
-  if (!user) {
+  if (!currentUser) {
     return <div>미션에 참여하려면 로그인이 필요합니다.</div>;
   }
 
@@ -35,7 +35,7 @@ export default function Mission() {
       description,
       points,
       assignedTo,
-      assignedBy: user.id,
+      assignedBy: currentUser.id,
       dueDate,
     });
     setShowNewMissionForm(false);
@@ -61,7 +61,7 @@ export default function Mission() {
       <div className="bg-blue-50 p-4 rounded-lg">
         <h2 className="text-lg font-bold mb-2">나의 포인트</h2>
         <div className="text-2xl font-bold text-blue-600">
-          {getUserPoints(user.id)} 포인트
+          {getUserPoints(currentUser.id)} 포인트
         </div>
       </div>
 
@@ -160,7 +160,7 @@ export default function Mission() {
                     {mission.points} 포인트
                   </p>
                 </div>
-                {mission.assignedBy === user.id && (
+                {mission.assignedBy === currentUser.id && (
                   <button
                     onClick={() => deleteMission(mission.id)}
                     className="text-red-500 hover:text-red-700"
@@ -170,7 +170,7 @@ export default function Mission() {
                 )}
               </div>
 
-              {mission.assignedTo === user.id && (
+              {mission.assignedTo === currentUser.id && (
                 <div className="space-y-2">
                   <textarea
                     value={proof}
@@ -212,7 +212,7 @@ export default function Mission() {
                 <p className="font-medium">완료 증거:</p>
                 <p className="text-gray-600">{mission.proof}</p>
               </div>
-              {mission.assignedBy === user.id && (
+              {mission.assignedBy === currentUser.id && (
                 <button
                   onClick={() => verifyMission(mission.id)}
                   className="mt-4 w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
