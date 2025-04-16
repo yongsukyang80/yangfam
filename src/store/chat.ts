@@ -4,30 +4,32 @@ import { db } from '@/lib/firebase';
 
 interface ChatMessage {
   id: string;
-  text: string;
+  content: string;
   userId: string;
   userName: string;
   timestamp: string;
+  type: 'text' | 'image';
 }
 
 interface ChatStore {
   messages: ChatMessage[];
-  sendMessage: (text: string, userId: string, userName: string) => Promise<void>;
+  sendMessage: (content: string, userId: string, userName: string, type: 'text' | 'image') => Promise<void>;
 }
 
 export const useChatStore = create<ChatStore>()((set, get) => ({
   messages: [],
 
-  sendMessage: async (text, userId, userName) => {
+  sendMessage: async (content, userId, userName, type = 'text') => {
     const messagesRef = ref(db, 'chat/messages');
     const newMessageRef = ref(db, `chat/messages/${Date.now()}`);
     
     const newMessage: ChatMessage = {
       id: newMessageRef.key!,
-      text,
+      content,
       userId,
       userName,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      type
     };
 
     await firebaseSet(newMessageRef, newMessage);

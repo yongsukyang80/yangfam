@@ -5,10 +5,10 @@ import { db } from '@/lib/firebase';
 interface GalleryImage {
   id: string;
   url: string;
-  title: string;
-  description: string;
   uploadedBy: string;
+  uploadedByName: string;
   uploadedAt: string;
+  description: string;
 }
 
 interface GalleryStore {

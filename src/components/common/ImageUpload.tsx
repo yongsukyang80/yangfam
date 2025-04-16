@@ -6,11 +6,10 @@ import { resizeImage } from '@/lib/utils/imageProcessing';
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
-  path: string;
   compact?: boolean;
 }
 
-export default function ImageUpload({ onUploadComplete, path, compact = false }: ImageUploadProps) {
+export default function ImageUpload({ onUploadComplete, compact = false }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -39,7 +38,7 @@ export default function ImageUpload({ onUploadComplete, path, compact = false }:
       };
       reader.readAsDataURL(processedFile);
 
-      const url = await uploadImage(processedFile, path);
+      const url = await uploadImage(processedFile);
       onUploadComplete(url);
       setPreviewUrl(null);
     } catch (error) {
@@ -93,22 +92,22 @@ export default function ImageUpload({ onUploadComplete, path, compact = false }:
           disabled={isUploading}
         />
         <div className="space-y-2">
-          <div className="text-[#1a1a1a]">
+          <div className="text-gray-600">
             {isUploading ? (
               <div className="flex items-center justify-center">
                 <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span className="text-[#4a4a4a]">업로드 중...</span>
+                업로드 중...
               </div>
             ) : (
               <>
                 <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                   <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <p className="mt-1 text-[#1a1a1a]">클릭하여 이미지 선택</p>
-                <p className="text-xs text-[#717171]">5MB 이하의 이미지 파일</p>
+                <p className="mt-1">클릭하여 이미지 선택</p>
+                <p className="text-xs text-gray-500">5MB 이하의 이미지 파일</p>
               </>
             )}
           </div>

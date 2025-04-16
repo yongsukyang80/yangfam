@@ -1,29 +1,24 @@
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
-export async function uploadImage(file: File | Blob, path: string): Promise<string> {
+export async function uploadImage(file: File | Blob): Promise<string> {
   try {
-    // Blob을 File로 변환
-    const uploadFile = file instanceof File ? file : new File([file], `${Date.now()}.jpg`, {
-      type: 'image/jpeg',
-    });
+    const formData = new FormData();
+    formData.append('image', file);
 
-    // 파일 확장자 추출 (File인 경우에만)
-    const extension = file instanceof File ? file.name.split('.').pop() : 'jpg';
-    
-    // 고유한 파일명 생성
-    const fileName = `${Date.now()}.${extension}`;
-    // Storage 경로 설정
-    const storageRef = ref(storage, `${path}/${fileName}`);
-    
-    // 파일 업로드
-    const snapshot = await uploadBytes(storageRef, uploadFile);
-    // 다운로드 URL 획득
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    return downloadURL;
+    const response = await fetch(
+      `https://api.imgbb.com/1/upload?key=ec16e894458d3d9d649feda3e7edbf12`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('이미지 업로드에 실패했습니다.');
+    }
+
+    const data = await response.json();
+    return data.data.display_url; // 직접 접근 가능한 URL 반환
   } catch (error) {
     console.error('Error uploading image:', error);
-    throw error;
+    throw new Error('이미지 업로드에 실패했습니다.');
   }
 }
