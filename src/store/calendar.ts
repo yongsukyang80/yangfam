@@ -1,40 +1,57 @@
 import { create } from 'zustand';
-import { CalendarEvent } from '@/types';
+import { ref, set, get, onValue, push, remove } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
-interface CalendarState {
-  events: CalendarEvent[];
-  addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt'>) => void;
-  removeEvent: (id: string) => void;
-  updateEvent: (id: string, event: Partial<CalendarEvent>) => void;
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  type: 'family' | 'personal';
+  createdBy: string;
+  createdAt: string;
 }
 
-export const useCalendarStore = create<CalendarState>((set) => ({
-  events: typeof window !== 'undefined' 
-    ? JSON.parse(localStorage.getItem('calendar_events') || '[]')
-    : [],
+interface CalendarStore {
+  events: CalendarEvent[];
+  addEvent: (event: Omit<CalendarEvent, 'id' | 'createdAt'>) => void;
+  removeEvent: (eventId: string) => void;
+  updateEvent: (eventId: string, event: Partial<CalendarEvent>) => void;
+}
 
-  addEvent: (eventData) => set((state) => {
-    const newEvent: CalendarEvent = {
+export const useCalendarStore = create<CalendarStore>((set, get) => ({
+  events: [],
+
+  addEvent: async (eventData) => {
+    const eventsRef = ref(db, 'calendar/events');
+    const newEventRef = push(eventsRef);
+    const newEvent = {
       ...eventData,
-      id: Date.now().toString(),
+      id: newEventRef.key!,
       createdAt: new Date().toISOString()
     };
-    const newEvents = [...state.events, newEvent];
-    localStorage.setItem('calendar_events', JSON.stringify(newEvents));
-    return { events: newEvents };
-  }),
+    
+    await set(newEventRef, newEvent);
+  },
 
-  removeEvent: (id) => set((state) => {
-    const newEvents = state.events.filter(event => event.id !== id);
-    localStorage.setItem('calendar_events', JSON.stringify(newEvents));
-    return { events: newEvents };
-  }),
+  removeEvent: async (eventId) => {
+    await remove(ref(db, `calendar/events/${eventId}`));
+  },
 
-  updateEvent: (id, eventData) => set((state) => {
-    const newEvents = state.events.map(event =>
-      event.id === id ? { ...event, ...eventData } : event
-    );
-    localStorage.setItem('calendar_events', JSON.stringify(newEvents));
-    return { events: newEvents };
-  })
+  updateEvent: async (eventId, eventData) => {
+    await set(ref(db, `calendar/events/${eventId}`), {
+      ...get().events.find(e => e.id === eventId),
+      ...eventData
+    });
+  }
 }));
+
+// Firebase 실시간 동기화
+if (typeof window !== 'undefined') {
+  const eventsRef = ref(db, 'calendar/events');
+  onValue(eventsRef, (snapshot) => {
+    const data = snapshot.val();
+    const events = data ? Object.values(data) : [];
+    useCalendarStore.setState({ events });
+  });
+}

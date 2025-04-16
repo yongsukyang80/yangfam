@@ -1,50 +1,48 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { GalleryItem } from '@/types';
+import { ref, set, push, remove, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
-interface GalleryStore {
-  items: GalleryItem[];
-  addItem: (item: Omit<GalleryItem, 'id' | 'uploadedAt' | 'likes'>) => void;
-  removeItem: (id: string) => void;
-  toggleLike: (itemId: string, userId: string) => void;
+interface GalleryImage {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  uploadedBy: string;
+  uploadedAt: string;
 }
 
-export const useGalleryStore = create<GalleryStore>()(
-  persist(
-    (set) => ({
-      items: [],
-      addItem: (item) =>
-        set((state) => ({
-          items: [
-            ...state.items,
-            {
-              ...item,
-              id: crypto.randomUUID(),
-              uploadedAt: new Date().toISOString(),
-              likes: [],
-            },
-          ],
-        })),
-      removeItem: (id) =>
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        })),
-      toggleLike: (itemId, userId) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  likes: item.likes.includes(userId)
-                    ? item.likes.filter((id) => id !== userId)
-                    : [...item.likes, userId],
-                }
-              : item
-          ),
-        })),
-    }),
-    {
-      name: 'gallery-storage',
-    }
-  )
-);
+interface GalleryStore {
+  images: GalleryImage[];
+  addImage: (image: Omit<GalleryImage, 'id' | 'uploadedAt'>) => void;
+  removeImage: (imageId: string) => void;
+}
+
+export const useGalleryStore = create<GalleryStore>((set) => ({
+  images: [],
+
+  addImage: async (imageData) => {
+    const imagesRef = ref(db, 'gallery/images');
+    const newImageRef = push(imagesRef);
+    const newImage = {
+      ...imageData,
+      id: newImageRef.key!,
+      uploadedAt: new Date().toISOString()
+    };
+    
+    await set(newImageRef, newImage);
+  },
+
+  removeImage: async (imageId) => {
+    await remove(ref(db, `gallery/images/${imageId}`));
+  }
+}));
+
+// Firebase 실시간 동기화
+if (typeof window !== 'undefined') {
+  const imagesRef = ref(db, 'gallery/images');
+  onValue(imagesRef, (snapshot) => {
+    const data = snapshot.val();
+    const images = data ? Object.values(data) : [];
+    useGalleryStore.setState({ images });
+  });
+}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { ref, set, push, remove, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 interface FoodOption {
   id: string;
@@ -22,105 +23,79 @@ interface Vote {
   createdAt: string;
 }
 
+interface FoodVote {
+  id: string;
+  title: string;
+  options: string[];
+  createdBy: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+interface Vote {
+  voteId: string;
+  userId: string;
+  option: string;
+  timestamp: string;
+}
+
 interface FoodVoteStore {
-  votes: Vote[];
-  createVote: (vote: Omit<Vote, 'id' | 'isActive' | 'createdAt'>) => void;
-  addOption: (voteId: string, option: Omit<FoodOption, 'id' | 'votes' | 'createdAt'>) => void;
-  removeOption: (voteId: string, optionId: string) => void;
-  toggleVote: (voteId: string, optionId: string, userId: string) => void;
-  endVote: (voteId: string) => void;
+  votes: FoodVote[];
+  userVotes: Vote[];
+  createVote: (vote: Omit<FoodVote, 'id' | 'isActive'>) => void;
+  submitVote: (voteId: string, userId: string, option: string) => void;
+  closeVote: (voteId: string) => void;
   deleteVote: (voteId: string) => void;
 }
 
-export const useFoodVoteStore = create<FoodVoteStore>()(
-  persist(
-    (set) => ({
-      votes: [],
+export const useFoodVoteStore = create<FoodVoteStore>((set, get) => ({
+  votes: [],
+  userVotes: [],
 
-      createVote: (vote) =>
-        set((state) => ({
-          votes: [
-            ...state.votes,
-            {
-              ...vote,
-              id: crypto.randomUUID(),
-              isActive: true,
-              createdAt: new Date().toISOString(),
-              options: [],
-            },
-          ],
-        })),
+  createVote: async (voteData) => {
+    const votesRef = ref(db, 'foodVote/votes');
+    const newVoteRef = push(votesRef);
+    const newVote = {
+      ...voteData,
+      id: newVoteRef.key!,
+      isActive: true
+    };
+    
+    await set(newVoteRef, newVote);
+  },
 
-      addOption: (voteId, option) =>
-        set((state) => ({
-          votes: state.votes.map((vote) =>
-            vote.id === voteId
-              ? {
-                  ...vote,
-                  options: [
-                    ...vote.options,
-                    {
-                      ...option,
-                      id: crypto.randomUUID(),
-                      votes: [],
-                      createdAt: new Date().toISOString(),
-                    },
-                  ],
-                }
-              : vote
-          ),
-        })),
+  submitVote: async (voteId, userId, option) => {
+    const userVotesRef = ref(db, 'foodVote/userVotes');
+    const newVoteRef = push(userVotesRef);
+    const vote = {
+      voteId,
+      userId,
+      option,
+      timestamp: new Date().toISOString()
+    };
+    
+    await set(newVoteRef, vote);
+  },
 
-      removeOption: (voteId, optionId) =>
-        set((state) => ({
-          votes: state.votes.map((vote) =>
-            vote.id === voteId
-              ? {
-                  ...vote,
-                  options: vote.options.filter((option) => option.id !== optionId),
-                }
-              : vote
-          ),
-        })),
+  closeVote: async (voteId) => {
+    await set(ref(db, `foodVote/votes/${voteId}/isActive`), false);
+  },
 
-      toggleVote: (voteId, optionId, userId) =>
-        set((state) => ({
-          votes: state.votes.map((vote) =>
-            vote.id === voteId
-              ? {
-                  ...vote,
-                  options: vote.options.map((option) =>
-                    option.id === optionId
-                      ? {
-                          ...option,
-                          votes: option.votes.includes(userId)
-                            ? option.votes.filter((id) => id !== userId)
-                            : [...option.votes, userId],
-                        }
-                      : {
-                          ...option,
-                          votes: option.votes.filter((id) => id !== userId),
-                        }
-                  ),
-                }
-              : vote
-          ),
-        })),
+  deleteVote: async (voteId) => {
+    await remove(ref(db, `foodVote/votes/${voteId}`));
+  }
+}));
 
-      endVote: (voteId) =>
-        set((state) => ({
-          votes: state.votes.map((vote) =>
-            vote.id === voteId ? { ...vote, isActive: false } : vote
-          ),
-        })),
-
-      deleteVote: (voteId) =>
-        set((state) => ({
-          votes: state.votes.filter((vote) => vote.id !== voteId),
-        })),
-    }),
-    {
-      name: 'food-vote-storage',
+// Firebase 실시간 동기화
+if (typeof window !== 'undefined') {
+  const foodVoteRef = ref(db, 'foodVote');
+  onValue(foodVoteRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      useFoodVoteStore.setState({
+        votes: Object.values(data.votes || {}),
+        userVotes: Object.values(data.userVotes || {})
+      });
     }
-  )
-);
+  });
+}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { ref, set, push, remove, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 interface Mission {
   id: string;
@@ -18,80 +19,77 @@ interface Mission {
 
 interface MissionStore {
   missions: Mission[];
-  userPoints: Record<string, number>; // 사용자별 포인트 현황
-  createMission: (mission: Omit<Mission, 'id' | 'status' | 'createdAt'>) => void;
+  userPoints: { [userId: string]: number };
+  createMission: (mission: Omit<Mission, 'id' | 'status'>) => void;
   completeMission: (missionId: string, proof: string) => void;
   verifyMission: (missionId: string) => void;
   deleteMission: (missionId: string) => void;
   getUserPoints: (userId: string) => number;
 }
 
-export const useMissionStore = create<MissionStore>()(
-  persist(
-    (set, get) => ({
-      missions: [],
-      userPoints: {},
+export const useMissionStore = create<MissionStore>((set, get) => ({
+  missions: [],
+  userPoints: {},
 
-      createMission: (mission) =>
-        set((state) => ({
-          missions: [
-            ...state.missions,
-            {
-              ...mission,
-              id: crypto.randomUUID(),
-              status: 'pending',
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        })),
+  createMission: async (missionData) => {
+    const missionsRef = ref(db, 'missions/list');
+    const newMissionRef = push(missionsRef);
+    const newMission = {
+      ...missionData,
+      id: newMissionRef.key!,
+      status: 'pending'
+    };
+    
+    await set(newMissionRef, newMission);
+  },
 
-      completeMission: (missionId, proof) =>
-        set((state) => ({
-          missions: state.missions.map((mission) =>
-            mission.id === missionId
-              ? {
-                  ...mission,
-                  status: 'completed',
-                  completedAt: new Date().toISOString(),
-                  proof,
-                }
-              : mission
-          ),
-        })),
+  completeMission: async (missionId, proof) => {
+    const mission = get().missions.find(m => m.id === missionId);
+    if (!mission) return;
 
-      verifyMission: (missionId) =>
-        set((state) => {
-          const mission = state.missions.find((m) => m.id === missionId);
-          if (!mission) return state;
+    await set(ref(db, `missions/list/${missionId}`), {
+      ...mission,
+      status: 'completed',
+      proof,
+      completedAt: new Date().toISOString()
+    });
+  },
 
-          const currentPoints = state.userPoints[mission.assignedTo] || 0;
-          
-          return {
-            missions: state.missions.map((m) =>
-              m.id === missionId
-                ? {
-                    ...m,
-                    status: 'verified',
-                    verifiedAt: new Date().toISOString(),
-                  }
-                : m
-            ),
-            userPoints: {
-              ...state.userPoints,
-              [mission.assignedTo]: currentPoints + mission.points,
-            },
-          };
-        }),
+  verifyMission: async (missionId) => {
+    const mission = get().missions.find(m => m.id === missionId);
+    if (!mission) return;
 
-      deleteMission: (missionId) =>
-        set((state) => ({
-          missions: state.missions.filter((mission) => mission.id !== missionId),
-        })),
+    const userPoints = { ...get().userPoints };
+    userPoints[mission.assignedTo] = (userPoints[mission.assignedTo] || 0) + mission.points;
 
-      getUserPoints: (userId) => get().userPoints[userId] || 0,
-    }),
-    {
-      name: 'mission-storage',
+    await Promise.all([
+      set(ref(db, `missions/list/${missionId}`), {
+        ...mission,
+        status: 'verified'
+      }),
+      set(ref(db, 'missions/userPoints'), userPoints)
+    ]);
+  },
+
+  deleteMission: async (missionId) => {
+    await remove(ref(db, `missions/list/${missionId}`));
+  },
+
+  getUserPoints: (userId) => {
+    return get().userPoints[userId] || 0;
+  }
+}));
+
+// Firebase 실시간 동기화
+if (typeof window !== 'undefined') {
+  const missionsRef = ref(db, 'missions');
+  onValue(missionsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      useMissionStore.setState({
+        missions: Object.values(data.list || {}),
+        userPoints: data.userPoints || {}
+      });
     }
-  )
-);
+  });
+}
