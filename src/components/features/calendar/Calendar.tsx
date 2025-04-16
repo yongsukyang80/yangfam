@@ -4,111 +4,138 @@ import { useState } from 'react';
 import { useCalendarStore } from '@/store/calendar';
 import { useAuthStore } from '@/store/auth';
 import AddEventModal from './AddEventModal';
+import dayjs from 'dayjs';
 
 export default function Calendar() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const events = useCalendarStore(state => state.events);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const events = useCalendarStore((state) => state.events);
 
   const daysInMonth = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth() + 1,
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
     0
   ).getDate();
 
   const firstDayOfMonth = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth(),
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
     1
   ).getDay();
 
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
+  };
+
+  const handleDateClick = (date: number) => {
+    const selectedDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      date
+    );
+    // Date를 YYYY-MM-DD 형식의 string으로 변환
+    setSelectedDate(dayjs(selectedDate).format('YYYY-MM-DD'));
+    setShowAddModal(true);
+  };
 
   const getEventsForDate = (date: number) => {
-    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+    const dateStr = dayjs(new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      date
+    )).format('YYYY-MM-DD');
+    
     return events.filter(event => event.date === dateStr);
   };
 
+  const days = [];
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    days.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(i);
+  }
+
   return (
     <div className="p-4">
+      {/* 달력 헤더 */}
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">가족 캘린더</h1>
-        <div className="flex space-x-4">
+        <h2 className="text-xl font-bold">
+          {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
+        </h2>
+        <div className="space-x-2">
           <button
-            onClick={() => {
-              const newDate = new Date(selectedDate);
-              newDate.setMonth(newDate.getMonth() - 1);
-              setSelectedDate(newDate);
-            }}
-            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50"
+            onClick={handlePrevMonth}
+            className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
           >
-            ←
-          </button>
-          <span className="text-lg font-medium">
-            {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
-          </span>
-          <button
-            onClick={() => {
-              const newDate = new Date(selectedDate);
-              newDate.setMonth(newDate.getMonth() + 1);
-              setSelectedDate(newDate);
-            }}
-            className="px-4 py-2 bg-white rounded-lg shadow hover:bg-gray-50"
-          >
-            →
+            이전
           </button>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
+            onClick={handleNextMonth}
+            className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
           >
-            일정 추가
+            다음
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 mb-4">
-        {['일', '월', '화', '수', '목', '금', '토'].map(day => (
-          <div key={day} className="text-center font-medium py-2">
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 gap-2 mb-2">
+        {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
+          <div
+            key={day}
+            className="text-center font-medium py-2"
+          >
             {day}
           </div>
         ))}
       </div>
 
+      {/* 달력 그리드 */}
       <div className="grid grid-cols-7 gap-2">
-        {emptyDays.map(day => (
-          <div key={`empty-${day}`} className="h-24 bg-gray-100 rounded-lg" />
-        ))}
-        {days.map(day => {
-          const dayEvents = getEventsForDate(day);
-          return (
-            <div
-              key={day}
-              className="h-24 bg-white rounded-lg shadow p-2 cursor-pointer hover:bg-gray-50"
-              onClick={() => {
-                setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day));
-                setIsModalOpen(true);
-              }}
-            >
-              <div className="font-medium">{day}</div>
-              {dayEvents.map(event => (
-                <div
-                  key={event.id}
-                  className="text-xs p-1 mt-1 rounded bg-blue-100 text-blue-800"
-                >
-                  {event.title}
+        {days.map((day, index) => (
+          <div
+            key={index}
+            className={`min-h-[100px] border rounded-lg p-2 ${
+              day ? 'hover:bg-gray-50 cursor-pointer' : ''
+            }`}
+            onClick={() => day && handleDateClick(day)}
+          >
+            {day && (
+              <>
+                <div className="font-medium">{day}</div>
+                <div className="space-y-1 mt-1">
+                  {getEventsForDate(day).map((event, i) => (
+                    <div
+                      key={i}
+                      className={`text-xs p-1 rounded ${
+                        event.type === 'family' ? 'bg-blue-100' : 'bg-green-100'
+                      }`}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          );
-        })}
+              </>
+            )}
+          </div>
+        ))}
       </div>
 
-      <AddEventModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        selectedDate={selectedDate}
-      />
+      {/* 일정 추가 모달 */}
+      {showAddModal && (
+        <AddEventModal
+          onClose={() => setShowAddModal(false)}
+          selectedDate={selectedDate}
+        />
+      )}
     </div>
   );
 }
