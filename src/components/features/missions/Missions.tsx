@@ -6,7 +6,15 @@ import { useAuthStore } from '@/store/auth';
 
 export default function MissionComponent() {
   const currentUser = useAuthStore((state) => state.currentUser);
-  const { missions, createMission, assignMission, submitMissionProof, verifyMission, deleteMission } = useMissionStore();
+  const { 
+    missions, 
+    createMission, 
+    assignMission, 
+    submitMissionProof, 
+    verifyMission, 
+    deleteMission,
+    getUserPoints 
+  } = useMissionStore();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,12 +48,19 @@ export default function MissionComponent() {
 
   if (!currentUser) return null;
 
+  const userPoints = getUserPoints(currentUser.id);
   const pendingMissions = missions.filter(m => m.status === 'pending');
   const completedMissions = missions.filter(m => m.status === 'completed');
   const verifiedMissions = missions.filter(m => m.status === 'verified');
 
   return (
     <div className="p-4 space-y-6">
+      {/* 사용자 포인트 표시 */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-2xl font-bold">나의 포인트</h2>
+        <p className="text-3xl font-bold text-blue-600 mt-2">{userPoints} 점</p>
+      </div>
+
       {/* 미션 생성 폼 */}
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-2xl font-bold mb-4">새 미션 만들기</h2>
