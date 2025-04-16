@@ -12,6 +12,7 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+    domains: ['your-image-domain.com'],
   },
   webpack: (config) => {
     config.module.rules.push({
@@ -19,6 +20,9 @@ const nextConfig = {
       type: 'asset/resource',
     });
     return config;
+  },
+  experimental: {
+    optimizeFonts: true,
   },
 }
 

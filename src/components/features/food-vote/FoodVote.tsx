@@ -64,18 +64,18 @@ export default function FoodVote() {
   const completedVotes = votes.filter(vote => new Date(vote.endTime) <= new Date());
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 pb-20 md:pb-4 space-y-6">
       {/* 새 투표 생성 폼 */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-2xl font-bold mb-4">새 투표 만들기</h2>
+      <div className="bg-white p-4 md:p-6 rounded-lg shadow">
+        <h2 className="text-xl md:text-2xl font-bold mb-4">새 투표 만들기</h2>
         <form onSubmit={handleCreateVote} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">제목</label>
+            <label className="block text-sm font-medium mb-2">제목</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-4 py-3 text-base border rounded-lg"
               required
             />
           </div>
@@ -115,7 +115,7 @@ export default function FoodVote() {
 
           <button
             type="submit"
-            className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="w-full px-4 py-4 md:py-3 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700"
           >
             투표 생성
           </button>

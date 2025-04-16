@@ -5,6 +5,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-size-base: 16px;
+  --touch-target-size: 44px;
 }
 
 @theme inline {
@@ -18,6 +20,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --background-color: #000;
+    --text-color: #fff;
   }
 }
 
@@ -25,4 +29,44 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 모바일 최적화 기본 스타일 */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    font-size: var(--font-size-base);
+  }
+
+  /* 터치 영역 최적화 */
+  button, 
+  [role="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="button"] {
+    min-height: var(--touch-target-size);
+    min-width: var(--touch-target-size);
+  }
+
+  /* 폼 요소 최적화 */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    @apply text-base px-4 py-3 rounded-lg;
+    min-height: var(--touch-target-size);
+  }
+}
+
+/* 모바일에서 더 나은 가독성을 위한 텍스트 크기 조정 */
+@media (max-width: 640px) {
+  h1 { @apply text-2xl; }
+  h2 { @apply text-xl; }
+  h3 { @apply text-lg; }
+  p { @apply text-base; }
 }
