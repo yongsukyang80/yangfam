@@ -5,215 +5,177 @@ import { useQuizStore } from '@/store/quiz';
 import { useAuthStore } from '@/store/auth';
 
 export default function Quiz() {
-  const [newQuestion, setNewQuestion] = useState('');
-  const [newAnswer, setNewAnswer] = useState('');
-  const [newCategory, setNewCategory] = useState<'취미' | '음식' | '추억' | '기타'>('기타');
-  const [userAnswer, setUserAnswer] = useState('');
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [showAddQuiz, setShowAddQuiz] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '', '', '']);
+  const [correctAnswer, setCorrectAnswer] = useState('');
+  const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [error, setError] = useState('');
 
-  const user = useAuthStore(state => state.user);
-  const {
-    questions,
-    answers,
-    currentQuestionIndex,
-    isPlaying,
-    addQuestion,
-    removeQuestion,
-    submitAnswer,
-    startQuiz,
-    endQuiz,
-    nextQuestion,
-  } = useQuizStore();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const { quizzes, attempts, addQuiz, submitAnswer } = useQuizStore();
 
-  const handleAddQuestion = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !newQuestion.trim() || !newAnswer.trim()) return;
-
-    addQuestion({
-      question: newQuestion.trim(),
-      answer: newAnswer.trim(),
-      category: newCategory,
-      createdBy: user.id,
-    });
-
-    setNewQuestion('');
-    setNewAnswer('');
-    setNewCategory('기타');
-  };
-
-  const handleSubmitAnswer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !userAnswer.trim()) return;
-
-    const currentQuestion = questions[currentQuestionIndex];
-    submitAnswer(currentQuestion.id, user.id, userAnswer.trim());
-    setShowAnswer(true);
-  };
-
-  const handleNextQuestion = () => {
-    setUserAnswer('');
-    setShowAnswer(false);
-    if (currentQuestionIndex < questions.length - 1) {
-      nextQuestion();
-    } else {
-      endQuiz();
-    }
-  };
-
-  if (!user) {
+  if (!currentUser) {
     return <div>퀴즈에 참여하려면 로그인이 필요합니다.</div>;
   }
 
+  const handleOptionChange = (index: number, value: string) => {
+    const newOptions = [...options];
+    newOptions[index] = value;
+    setOptions(newOptions);
+  };
+
+  const handleAddQuiz = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim() || options.some(opt => !opt.trim())) {
+      setError('모든 필드를 입력해주세요.');
+      return;
+    }
+    if (!options.includes(correctAnswer)) {
+      setError('정답은 보기 중 하나여야 합니다.');
+      return;
+    }
+
+    addQuiz({
+      question,
+      options,
+      correctAnswer,
+      createdBy: currentUser.id
+    });
+
+    setShowAddQuiz(false);
+    setQuestion('');
+    setOptions(['', '', '', '']);
+    setCorrectAnswer('');
+    setError('');
+  };
+
+  const handleSubmitAnswer = (quizId: string, answer: string) => {
+    submitAnswer(quizId, currentUser.id, answer);
+    setSelectedAnswer('');
+  };
+
+  const getQuizStatus = (quizId: string) => {
+    const attempt = attempts.find(
+      a => a.quizId === quizId && a.userId === currentUser.id
+    );
+    return attempt;
+  };
+
   return (
-    <div className="space-y-8">
-      {/* 퀴즈 문제 등록 폼 */}
-      {!isPlaying && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">새로운 퀴즈 등록하기</h3>
-          <form onSubmit={handleAddQuestion} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">카테고리</label>
-              <select
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value as any)}
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="취미">취미</option>
-                <option value="음식">음식</option>
-                <option value="추억">추억</option>
-                <option value="기타">기타</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">질문</label>
+    <div className="space-y-6">
+      {/* 퀴즈 추가 버튼 */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowAddQuiz(!showAddQuiz)}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          {showAddQuiz ? '취소' : '새 퀴즈 만들기'}
+        </button>
+      </div>
+
+      {/* 퀴즈 추가 폼 */}
+      {showAddQuiz && (
+        <form onSubmit={handleAddQuiz} className="bg-white p-6 rounded-lg shadow space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">질문</label>
+            <input
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              required
+            />
+          </div>
+
+          {options.map((option, index) => (
+            <div key={index}>
+              <label className="block text-sm font-medium mb-1">
+                보기 {index + 1}
+              </label>
               <input
                 type="text"
-                value={newQuestion}
-                onChange={(e) => setNewQuestion(e.target.value)}
+                value={option}
+                onChange={(e) => handleOptionChange(index, e.target.value)}
                 className="w-full px-3 py-2 border rounded"
-                placeholder="질문을 입력하세요"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">답변</label>
-              <input
-                type="text"
-                value={newAnswer}
-                onChange={(e) => setNewAnswer(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="답변을 입력하세요"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          ))}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">정답</label>
+            <select
+              value={correctAnswer}
+              onChange={(e) => setCorrectAnswer(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              required
             >
-              문제 등록하기
-            </button>
-          </form>
-        </div>
+              <option value="">정답 선택</option>
+              {options.map((option, index) => (
+                option && (
+                  <option key={index} value={option}>
+                    {option}
+                  </option>
+                )
+              ))}
+            </select>
+          </div>
+
+          {error && <div className="text-red-500 text-sm">{error}</div>}
+
+          <button
+            type="submit"
+            className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          >
+            퀴즈 만들기
+          </button>
+        </form>
       )}
 
-      {/* 퀴즈 목록 및 시작 버튼 */}
-      {!isPlaying && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">등록된 퀴즈 목록</h3>
-            {questions.length > 0 && (
-              <button
-                onClick={startQuiz}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              >
-                퀴즈 시작하기
-              </button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {questions.map((q) => (
-              <div
-                key={q.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded"
-              >
-                <div>
-                  <span className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded mr-2">
-                    {q.category}
-                  </span>
-                  {q.question}
+      {/* 퀴즈 목록 */}
+      <div className="space-y-4">
+        {quizzes.map((quiz) => {
+          const status = getQuizStatus(quiz.id);
+          return (
+            <div key={quiz.id} className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-bold mb-4">{quiz.question}</h3>
+              
+              {status ? (
+                <div className="space-y-2">
+                  <div className={`font-medium ${status.isCorrect ? 'text-green-500' : 'text-red-500'}`}>
+                    {status.isCorrect ? '정답입니다!' : '틀렸습니다.'}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    제출한 답: {status.answer}
+                  </div>
+                  {!status.isCorrect && (
+                    <div className="text-sm text-gray-600">
+                      정답: {quiz.correctAnswer}
+                    </div>
+                  )}
                 </div>
-                {q.createdBy === user.id && (
-                  <button
-                    onClick={() => removeQuestion(q.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 퀴즈 진행 화면 */}
-      {isPlaying && questions[currentQuestionIndex] && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-center mb-8">
-            <div className="text-sm text-gray-500 mb-2">
-              {currentQuestionIndex + 1} / {questions.length}
+              ) : (
+                <div className="space-y-2">
+                  {quiz.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSubmitAnswer(quiz.id, option)}
+                      className={`w-full p-2 text-left rounded ${
+                        selectedAnswer === option
+                          ? 'bg-blue-100 border-blue-500'
+                          : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full mb-4">
-              {questions[currentQuestionIndex].category}
-            </div>
-            <h2 className="text-xl font-bold">
-              {questions[currentQuestionIndex].question}
-            </h2>
-          </div>
-
-          {!showAnswer ? (
-            <form onSubmit={handleSubmitAnswer} className="space-y-4">
-              <input
-                type="text"
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                className="w-full px-4 py-2 border rounded"
-                placeholder="답변을 입력하세요"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                답변 제출하기
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded">
-                <div className="font-medium mb-2">정답:</div>
-                <div className="text-lg">{questions[currentQuestionIndex].answer}</div>
-              </div>
-              <button
-                onClick={handleNextQuestion}
-                className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              >
-                {currentQuestionIndex < questions.length - 1 ? '다음 문제' : '퀴즈 종료'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 퀴즈 결과 */}
-      {isPlaying && showAnswer && (
-        <div className="bg-green-50 p-4 rounded-lg">
-          <h3 className="font-bold mb-2">현재 점수</h3>
-          <div className="text-2xl font-bold">
-            {answers.filter((a) => a.isCorrect).length} / {answers.length}
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export default function Memory() {
     resetGame,
   } = useMemoryStore();
 
-  const user = useAuthStore((state) => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
 
   useEffect(() => {
     return () => {
@@ -24,12 +24,12 @@ export default function Memory() {
     };
   }, [resetGame]);
 
-  if (!user) {
+  if (!currentUser) {
     return <div>게임에 참여하려면 로그인이 필요합니다.</div>;
   }
 
   const handleStartGame = () => {
-    initializeGame([{ id: user.id, name: user.name, score: 0 }]);
+    initializeGame([{ id: currentUser.id, name: currentUser.name, score: 0 }]);
   };
 
   const allMatched = cards.every((card) => card.isMatched);
@@ -62,7 +62,7 @@ export default function Memory() {
             <div className="space-y-1">
               <div className="text-sm text-gray-600">점수</div>
               <div className="font-bold">
-                {players.find((p) => p.id === user.id)?.score}
+                {players.find((p) => p.id === currentUser.id)?.score}
               </div>
             </div>
           </div>
