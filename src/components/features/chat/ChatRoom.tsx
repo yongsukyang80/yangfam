@@ -11,7 +11,7 @@ export default function ChatRoom() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUser = useAuthStore((state) => state.currentUser);
-  const { messages, addMessage } = useChatStore();
+  const { messages, sendMessage } = useChatStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,23 +29,12 @@ export default function ChatRoom() {
       // 실제로는 이미지를 서버에 업로드하고 URL을 받아야 하지만,
       // 여기서는 로컬 URL을 생성합니다.
       const imageUrl = URL.createObjectURL(imageFile);
-      addMessage({
-        content: message,
-        userId: currentUser.id,
-        userName: currentUser.name,
-        type: 'image',
-        imageUrl,
-      });
+      sendMessage(message, currentUser.id, currentUser.name, 'image', imageUrl);
       setImageFile(null);
     }
 
     if (message.trim()) {
-      addMessage({
-        content: message.trim(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-        type: 'text',
-      });
+      sendMessage(message, currentUser.id, currentUser.name, 'text');
     }
 
     setMessage('');
@@ -57,6 +46,8 @@ export default function ChatRoom() {
       setImageFile(file);
     }
   };
+
+  if (!currentUser) return null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
