@@ -9,14 +9,12 @@ const firebaseConfig = {
   storageBucket: "yangfam-ecb64.firebasestorage.app",
   messagingSenderId: "525222379650",
   appId: "1:525222379650:web:8cd383d67dfbabae68b49b",
-  databaseURL: "https://yangfam-ecb64-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://yangfam-ecb64-default-rtdb.firebaseio.com"
 };
 
 console.log('Initializing Firebase with config:', firebaseConfig);
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+export const db = getDatabase(app);
 
 console.log('Firebase initialized:', !!db);
-
-export { db };
