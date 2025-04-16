@@ -27,10 +27,9 @@ export default function ImageUpload({ onUploadComplete, path, compact = false }:
       setIsUploading(true);
 
       // 파일 크기에 따라 리사이징 적용
-      let uploadFile: File | Blob = file;
+      let processedFile: File | Blob = file;
       if (file.size > 1024 * 1024) { // 1MB 이상인 경우
-        const resizedBlob = await resizeImage(file);
-        uploadFile = resizedBlob;
+        processedFile = await resizeImage(file);
       }
 
       // 미리보기 생성
@@ -38,9 +37,9 @@ export default function ImageUpload({ onUploadComplete, path, compact = false }:
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
       };
-      reader.readAsDataURL(uploadFile);
+      reader.readAsDataURL(processedFile);
 
-      const url = await uploadImage(uploadFile, path);
+      const url = await uploadImage(processedFile, path);
       onUploadComplete(url);
       setPreviewUrl(null);
     } catch (error) {
