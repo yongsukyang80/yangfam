@@ -8,8 +8,9 @@ export default function MissionComponent() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const { 
     missions, 
+    userPoints,
     createMission, 
-    assignMission, 
+    assignMission,
     submitMissionProof, 
     verifyMission, 
     deleteMission,
