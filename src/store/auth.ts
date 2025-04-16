@@ -15,79 +15,91 @@ interface Family {
   createdAt: string;
 }
 
-interface AuthStore {
+interface AuthState {
   currentUser: User | null;
   family: Family | null;
   familyMembers: User[];
+}
+
+interface AuthActions {
+  login: (name: string, role: 'father' | 'mother' | 'child') => Promise<void>;
   setCurrentUser: (user: User | null) => void;
   createFamily: (name: string) => Promise<void>;
   addFamilyMember: (user: User) => Promise<void>;
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthStore>()((set, get) => ({
+type AuthStore = AuthState & AuthActions;
+
+export const useAuthStore = create<AuthStore>()((set) => ({
   currentUser: null,
   family: null,
   familyMembers: [],
 
-  setCurrentUser: (user) => {
+  setCurrentUser: (user) => set({ currentUser: user }),
+
+  login: async (name, role) => {
+    const user: User = {
+      id: Date.now().toString(),
+      name,
+      role,
+      points: 0
+    };
+
     set({ currentUser: user });
+
+    const familyRef = ref(db, 'family');
+    const snapshot = await get(familyRef);
+    
+    if (!snapshot.exists()) {
+      const newFamily: Family = {
+        id: Date.now().toString(),
+        name: `${name}의 가족`,
+        createdAt: new Date().toISOString()
+      };
+      await firebaseSet(familyRef, newFamily);
+      set({ family: newFamily });
+    }
+
+    await firebaseSet(ref(db, `users/${user.id}`), user);
   },
 
   createFamily: async (name) => {
-    const family: Family = {
+    const newFamily: Family = {
       id: Date.now().toString(),
       name,
       createdAt: new Date().toISOString()
     };
 
-    const user = get().currentUser;
-    if (!user) return;
-
-    const familyMembers: User[] = [{
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      points: 0
-    }];
-
-    // Firebase에 데이터 저장
-    await firebaseSet(ref(db, 'family'), family);
-    await firebaseSet(ref(db, 'familyMembers'), familyMembers);
-
-    // Zustand 상태 업데이트
-    set({ family, familyMembers });
+    await firebaseSet(ref(db, 'family'), newFamily);
+    set({ family: newFamily });
   },
 
   addFamilyMember: async (user) => {
-    const currentMembers = get().familyMembers;
-    const updatedMembers = [...currentMembers, { ...user, points: 0 }];
-
-    // Firebase에 데이터 저장
-    await firebaseSet(ref(db, 'familyMembers'), updatedMembers);
-
-    // Zustand 상태 업데이트
-    set({ familyMembers: updatedMembers });
+    await firebaseSet(ref(db, `users/${user.id}`), {
+      ...user,
+      points: 0
+    });
   },
 
-  logout: () => {
-    set({ currentUser: null, family: null, familyMembers: [] });
-  }
+  logout: () => set({ currentUser: null, family: null, familyMembers: [] })
 }));
 
-// Firebase 실시간 동기화
 if (typeof window !== 'undefined') {
-  // 가족 정보 동기화
-  onValue(ref(db, 'family'), (snapshot) => {
+  const familyRef = ref(db, 'family');
+  onValue(familyRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      useAuthStore.setState({ family: data });
+      useAuthStore.setState({ family: data as Family });
+    } else {
+      useAuthStore.setState({ family: null });
     }
   });
 
-  // 가족 구성원 동기화
-  onValue(ref(db, 'familyMembers'), (snapshot) => {
-    const data = snapshot.val() || [];
-    useAuthStore.setState({ familyMembers: data });
+  const usersRef = ref(db, 'users');
+  onValue(usersRef, (snapshot) => {
+    const data = snapshot.val();
+    const members = data ? (Object.values(data) as User[]) : [];
+    useAuthStore.setState({ familyMembers: members });
   });
 }

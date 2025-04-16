@@ -283,7 +283,7 @@ export default function FoodVote() {
                       const voteCount = option.votes?.length || 0;
                       const totalVotes = vote.options.reduce((sum, opt) => sum + (opt.votes?.length || 0), 0);
                       const percentage = totalVotes === 0 ? 0 : (voteCount / totalVotes) * 100;
-                      const hasVoted = option.votes?.some(v => v.userId === currentUser?.id) || false;
+                      const hasVoted = Array.isArray(option.votes) && option.votes.some(v => v.userId === currentUser?.id) || false;
 
                       return (
                         <div key={option.id} className="space-y-1">
