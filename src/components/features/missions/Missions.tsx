@@ -8,10 +8,9 @@ export default function MissionComponent() {
   const currentUser = useAuthStore((state) => state.currentUser);
   const { 
     missions, 
-    userPoints,
     createMission, 
     assignMission,
-    submitMissionProof, 
+    submitMissionProof,
     verifyMission, 
     deleteMission,
     getUserPoints 
@@ -49,7 +48,7 @@ export default function MissionComponent() {
 
   if (!currentUser) return null;
 
-  const userPoints = getUserPoints(currentUser.id);
+  const currentUserPoints = getUserPoints(currentUser.id);
   const pendingMissions = missions.filter(m => m.status === 'pending');
   const completedMissions = missions.filter(m => m.status === 'completed');
   const verifiedMissions = missions.filter(m => m.status === 'verified');
@@ -59,7 +58,7 @@ export default function MissionComponent() {
       {/* 사용자 포인트 표시 */}
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-2xl font-bold">나의 포인트</h2>
-        <p className="text-3xl font-bold text-blue-600 mt-2">{userPoints} 점</p>
+        <p className="text-3xl font-bold text-blue-600 mt-2">{currentUserPoints} 점</p>
       </div>
 
       {/* 미션 생성 폼 */}
