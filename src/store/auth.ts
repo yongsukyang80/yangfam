@@ -5,8 +5,9 @@ import { db } from '@/lib/firebase';
 export interface User {
   id: string;
   name: string;
-  role: 'father' | 'mother' | 'child';
+  role: 'father' | 'mother' | 'child' | 'master';
   points?: number;
+  isMaster?: boolean;
 }
 
 interface Family {

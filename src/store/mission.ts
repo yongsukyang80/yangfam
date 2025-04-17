@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ref, set as firebaseSet, remove, onValue } from 'firebase/database';
+import { ref, set as firebaseSet, get as firebaseGet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 
 export interface Mission {
@@ -8,108 +8,108 @@ export interface Mission {
   description: string;
   points: number;
   createdBy: string;
+  createdByName: string;
   createdAt: string;
   deadline: string;
-  status: 'pending' | 'completed' | 'verified';
-  assignedTo?: string;
+  status: 'pending' | 'completed' | 'verified' | 'rejected';
   completedBy?: string;
+  completedByName?: string;
   completedAt?: string;
   proofImage?: string;
   verifiedBy?: string;
+  verifiedByName?: string;
   verifiedAt?: string;
-}
-
-interface UserPoints {
-  [userId: string]: number;
+  rejectionReason?: string;
 }
 
 interface MissionStore {
   missions: Mission[];
-  userPoints: UserPoints;
-  createMission: (mission: Omit<Mission, 'id' | 'status' | 'createdAt'>) => Promise<void>;
-  assignMission: (missionId: string, userId: string) => Promise<void>;
-  submitMissionProof: (missionId: string, userId: string, proofImage: string) => Promise<void>;
-  verifyMission: (missionId: string, verifierId: string) => Promise<void>;
+  createMission: (mission: Omit<Mission, 'id' | 'createdAt' | 'status'>) => Promise<void>;
+  completeMission: (missionId: string, userId: string, userName: string, proofImage?: string) => Promise<void>;
+  verifyMission: (missionId: string, verifierId: string, verifierName: string, isApproved: boolean, rejectionReason?: string) => Promise<void>;
   deleteMission: (missionId: string) => Promise<void>;
-  getUserPoints: (userId: string) => number;
 }
 
 export const useMissionStore = create<MissionStore>()((set, get) => ({
   missions: [],
-  userPoints: {},
 
   createMission: async (missionData) => {
-    const missionRef = ref(db, 'missions');
     const newMissionRef = ref(db, `missions/${Date.now()}`);
-    
     const newMission: Mission = {
       ...missionData,
       id: newMissionRef.key!,
-      status: 'pending',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      status: 'pending'
     };
 
     await firebaseSet(newMissionRef, newMission);
   },
 
-  assignMission: async (missionId, userId) => {
-    const mission = get().missions.find(m => m.id === missionId);
-    if (!mission) return;
+  completeMission: async (missionId, userId, userName, proofImage) => {
+    const missionRef = ref(db, `missions/${missionId}`);
+    const snapshot = await firebaseGet(missionRef);
+    const mission = snapshot.val() as Mission;
 
-    await firebaseSet(ref(db, `missions/${missionId}`), {
-      ...mission,
-      assignedTo: userId
-    });
-  },
+    if (!mission || mission.status !== 'pending') return;
 
-  submitMissionProof: async (missionId, userId, proofImage) => {
-    const mission = get().missions.find(m => m.id === missionId);
-    if (!mission) return;
-
-    await firebaseSet(ref(db, `missions/${missionId}`), {
+    const updatedMission: Mission = {
       ...mission,
       status: 'completed',
       completedBy: userId,
+      completedByName: userName,
       completedAt: new Date().toISOString(),
       proofImage
-    });
+    };
+
+    await firebaseSet(missionRef, updatedMission);
   },
 
-  verifyMission: async (missionId, verifierId) => {
-    const mission = get().missions.find(m => m.id === missionId);
-    if (!mission || !mission.completedBy) return;
+  verifyMission: async (missionId, verifierId, verifierName, isApproved, rejectionReason) => {
+    const missionRef = ref(db, `missions/${missionId}`);
+    const snapshot = await firebaseGet(missionRef);
+    const mission = snapshot.val() as Mission;
 
-    await firebaseSet(ref(db, `missions/${missionId}`), {
+    if (!mission || mission.status !== 'completed') return;
+
+    const updatedMission: Mission = {
       ...mission,
-      status: 'verified',
+      status: isApproved ? 'verified' : 'rejected',
       verifiedBy: verifierId,
+      verifiedByName: verifierName,
       verifiedAt: new Date().toISOString()
-    });
+    };
 
-    // Update user points
-    const userPointsRef = ref(db, `userPoints/${mission.completedBy}`);
-    const currentPoints = await get().getUserPoints(mission.completedBy);
-    await firebaseSet(userPointsRef, currentPoints + mission.points);
+    if (!isApproved && rejectionReason) {
+      updatedMission.rejectionReason = rejectionReason;
+    }
+
+    await firebaseSet(missionRef, updatedMission);
+
+    // 미션 완료 시 포인트 지급
+    if (isApproved && mission.completedBy) {
+      const userRef = ref(db, `users/${mission.completedBy}`);
+      const userSnapshot = await firebaseGet(userRef);
+      const user = userSnapshot.val();
+
+      if (user) {
+        await firebaseSet(userRef, {
+          ...user,
+          points: (user.points || 0) + mission.points
+        });
+      }
+    }
   },
 
   deleteMission: async (missionId) => {
     await remove(ref(db, `missions/${missionId}`));
-  },
-
-  getUserPoints: (userId) => {
-    const mission = get().missions.find(m => 
-      m.status === 'verified' && m.completedBy === userId
-    );
-    return mission ? mission.points : 0;
   }
 }));
 
 if (typeof window !== 'undefined') {
   const missionsRef = ref(db, 'missions');
   onValue(missionsRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    useMissionStore.setState({
-      missions: Object.values(data)
-    });
+    const data = snapshot.val();
+    const missions = data ? Object.values(data) as Mission[] : [];
+    useMissionStore.setState({ missions });
   });
 }

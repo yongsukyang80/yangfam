@@ -77,11 +77,15 @@ export const useFoodVoteStore = create<FoodVoteStore>()((set, get) => ({
       timestamp: new Date().toISOString()
     };
 
-    const updatedOptions = vote.options.map(opt =>
-      opt.id === optionId
-        ? { ...opt, votes: [...(opt.votes || []), newVote] }
-        : opt
-    );
+    const updatedOptions = vote.options.map(opt => {
+      if (opt.id === optionId) {
+        return {
+          ...opt,
+          votes: [...(opt.votes || []), newVote]
+        };
+      }
+      return opt;
+    });
 
     await firebaseSet(voteRef, {
       ...vote,
