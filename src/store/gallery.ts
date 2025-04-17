@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ref, set as firebaseSet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { sendNotificationToFamily } from '@/lib/notification';
 
 interface GalleryImage {
   id: string;
@@ -31,6 +32,13 @@ export const useGalleryStore = create<GalleryStore>()((set) => ({
     };
 
     await firebaseSet(newImageRef, newImage);
+    
+    // 알림 전송
+    await sendNotificationToFamily({
+      title: '새로운 사진이 추가되었습니다',
+      body: `${imageData.uploadedByName}님이 새 사진을 업로드했습니다`,
+      type: 'gallery'
+    });
   },
 
   removeImage: async (imageId) => {

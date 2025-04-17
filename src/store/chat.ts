@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ref, set as firebaseSet, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { sendNotificationToFamily } from '@/lib/notification';
 
 interface ChatMessage {
   id: string;
@@ -33,6 +34,13 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     };
 
     await firebaseSet(newMessageRef, newMessage);
+    
+    // 알림 전송
+    await sendNotificationToFamily({
+      title: '새 메시지가 도착했습니다',
+      body: `${userName}: ${content}`,
+      type: 'chat'
+    });
   }
 }));
 

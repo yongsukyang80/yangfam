@@ -168,11 +168,16 @@ export default function Missions() {
                   완료일: {new Date(mission.completedAt!).toLocaleDateString()}
                 </p>
                 {mission.proofImage && (
-                  <img
-                    src={mission.proofImage}
-                    alt="미션 증명"
-                    className="mt-2 max-w-xs rounded"
-                  />
+                  <div className="mt-2 relative w-full max-w-md aspect-video">
+                    <img
+                      src={mission.proofImage}
+                      alt="미션 증명"
+                      className="absolute inset-0 w-full h-full object-contain rounded shadow-lg"
+                      onClick={() => {
+                        window.open(mission.proofImage, '_blank');
+                      }}
+                    />
+                  </div>
                 )}
                 <div className="mt-2 flex gap-2">
                   <button

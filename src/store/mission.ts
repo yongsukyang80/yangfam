@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ref, set as firebaseSet, get as firebaseGet, remove, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
+import { sendNotificationToFamily } from '@/lib/notification';
 
 export interface Mission {
   id: string;
@@ -62,6 +63,13 @@ export const useMissionStore = create<MissionStore>()((set, get) => ({
     };
 
     await firebaseSet(missionRef, updatedMission);
+    
+    // 알림 전송
+    await sendNotificationToFamily({
+      title: '미션 완료 제출',
+      body: `${userName}님이 미션을 완료했습니다: ${mission.title}`,
+      type: 'mission'
+    });
   },
 
   verifyMission: async (missionId, verifierId, verifierName, isApproved, rejectionReason) => {
@@ -84,6 +92,15 @@ export const useMissionStore = create<MissionStore>()((set, get) => ({
     }
 
     await firebaseSet(missionRef, updatedMission);
+    
+    // 알림 전송
+    await sendNotificationToFamily({
+      title: '미션 검증 결과',
+      body: isApproved 
+        ? `${mission.title} 미션이 승인되었습니다!`
+        : `${mission.title} 미션이 거절되었습니다: ${rejectionReason}`,
+      type: 'mission'
+    });
 
     // 미션 완료 시 포인트 지급
     if (isApproved && mission.completedBy) {
